@@ -1,0 +1,52 @@
+*,*:before,*:after {
+  box-sizing: border-box;
+}
+
+html {
+  font-family: arial, helvetica, sans-serif;
+}
+
+.table {
+  background: green;
+  padding: 20px;
+  border:solid 4px brown;
+}
+
+.card {
+  display: inline-block;
+  width: 50px;
+  height: 70px;
+  background: white;
+  margin-right: 5px;
+  border-radius: 3px;
+  padding: 2px;
+  overflow: hidden;
+  position: relative;
+  font-weight: bold;
+}
+
+.card.hearts, .card.diamonds {
+  color:red;
+}
+
+.card div {
+  position: absolute;
+  right: -10px;
+  bottom:-5px;
+  height: 50px;
+  width: 50px;
+  background: url(card.min.svg) 0/200%;
+
+}
+.card.hearts div {
+  background-position: top left;
+}
+.card.diamonds div {
+  background-position: bottom left;
+}
+.card.clubs div {
+  background-position: top right;
+}
+.card.spades div {
+  background-position: bottom right;
+}
