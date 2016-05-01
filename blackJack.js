@@ -2,76 +2,142 @@
 
 var output = document.getElementById('js_output');
 
-var suits = ['diamonds', 'hearts', 'spades', 'clubs'],
-  faces = ['Ace', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Jack', 'Queen', 'King'],
-  faceSm = {0 : 'A', 10 : 'J', 11 : 'Q', 12 : 'K'};
-
-var cards = {
+var deck = {
   count: 0,
-  deck: [],
+  cards: [],
+  table: '',
 
 
   build: function (deckCount) {
     //decks
-    for (var i = 0; i < deckCount; i++) {
+    var i,j,k;
+
+    for (i = 0; i < deckCount; i++) {
       //suits
-      for (var j = 0; j < 4; j++) {
-        //cards
-        for (var k = 0; k < 13; k++) {
-          cards.deck.push([k, j]);
+      for (j = 0; j < 4; j++) {
+        //deck
+        for (k = 0; k < 13; k++) {
+          deck.cards.push([k, j]);
         }
       }
     }
-    cards.count = cards.deck.length;
-  },
 
-  shuffle: function() {
-    //https://www.kirupa.com/html5/shuffling_array_js.htm
-    for (var i = cards.count-1; i >=0; i--) {
 
-        var randomIndex = Math.floor(Math.random()*(i+1)),
-          itemAtIndex = cards.deck[randomIndex];
-
-        cards.deck[randomIndex] = cards.deck[i];
-        cards.deck[i] = itemAtIndex;
-    }
+    deck.count = deck.cards.length;
   },
 
   draw: function(num) {
-    return cards.deck.splice(0,num);
-  },
+    var i, output = [];
 
-  prettyStr: function(cardArr) {
-    output = faces[cardArr[0]] + ' of ' + suits[cardArr[1]];
+    for (i = 0; i < num; i++) {
+      var rng = Math.floor(Math.random() * deck.count);
+      output = output.concat(deck.cards.splice(rng,1));
+
+      deck.count--;
+    }
     return output;
   },
 
-  prettyEl: function(cardArr) {
-    var card = document.createElement('div'),
-      cardVal = document.createElement('span'),
-      cardDes = document.createElement('div');
+}
 
-    card.className = 'card ' + suits[cardArr[1]];
-    cardVal.innerHTML = faceSm[cardArr[0]] || cardArr[0] + 1;
-    //cardDes.src += 'card-' + faces[cardArr[0]] + '.svg'
+var player = {
+  score: 0,
+  cards: [],
+  bet: 0
+}
 
-    card.appendChild(cardVal);
-    card.appendChild(cardDes);
+var dealer = {
+  score: 0,
+  cards: []
+}
 
-    return card;
+var table = {
+
+
+  newGame: function(options) {
+    var defaults = {
+      tableElement : options.tableElement === undefined ? '#jr_cardTable' : options.tableElement,
+      deckCount : options.deckCount === undefined ? 6 : options.deckCount
+    },
+      output = document.querySelector(defaults.tableElement);
+
+    table.dealerHand = output.getElementsByClassName('dealer-hand')[0];
+    table.dealerScoreBoard = output.getElementsByClassName('dealer-score')[0];
+    table.playerHand = output.getElementsByClassName('player-hand')[0];
+    table.playerScoreBoard = output.getElementsByClassName('player-score')[0];
+
+
+    deck.build(defaults.deckCount);
+
+    table.hitPlayer();
   },
 
-  show: function (input) {
-    var count = input.length;
-    var out = "<h1>Deck: </h1>"
-    for (var i = 0; i < count; i++) {
-      out += cards.prettyStr(input[i]) + '<br />';
-      document.getElementById('js_cardTable').appendChild(cards.prettyEl(input[i]));
+  hitDealer: function() {
+    var card = deck.draw(1)[0];
+    //card = cardVisual(cards[0]);
+    dealer.cards.push(card);
+    dealer.score += cardValue(card);
+    //dealer.cards.appendChild(card);
+    table.dealerHand.appendChild(cardVisual(card))
+    table.updateDealer();
+  },
+
+  hitPlayer: function() {
+    var card = deck.draw(1)[0];
+
+    player.cards.push(card);
+    player.score += cardValue(card);
+    table.playerHand.appendChild(cardVisual(card));
+
+    console.log(card);
+
+    if (player.cards.length < 3 && card[0] == 0) {
+      table.playerScoreBoard.textContent = 'Soft ' + player.score;
+    } else {
+      table.playerScoreBoard.textContent = player.score;
     }
-    return out;
+  },
+
+
+  updateDealer: function() {
+    table.dealerScoreBoard.textContent = dealer.score;
   }
 }
 
-cards.build(1);
-cards.shuffle();
-output.innerHTML = cards.show(cards.draw(5));
+function cardValue(cardArr) {
+  var out, value = cardArr[0];
+  if (value == 0) {
+    out = 11;
+  } else if (value > 9) {
+    out = 10;
+  } else {
+    out = value + 1;
+  }
+  return out;
+}
+
+function cardVisual(cardArr) {
+  var suits = ['diamonds', 'hearts', 'spades', 'clubs'],
+    faces = {0 : 'A', 10 : 'J', 11 : 'Q', 12 : 'K'};
+
+  var card = document.createElement('div'),
+    cardVal = document.createElement('span'),
+    cardDes = document.createElement('div');
+
+  card.className = 'card ' + suits[cardArr[1]];
+  cardVal.innerHTML = faces[cardArr[0]] || cardArr[0] + 1;
+
+  card.appendChild(cardVal);
+  card.appendChild(cardDes);
+
+  return card;
+}
+
+table.newGame({
+  tableElement : '#jr_cardTable',
+  deckCount : 1
+});
+
+
+
+
