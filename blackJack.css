@@ -29,6 +29,10 @@ html {
   color:red;
 }
 
+.card.blank {
+  background: url(card-back.svg) center/cover , #c97272;
+}
+
 .card div {
   position: absolute;
   right: -10px;

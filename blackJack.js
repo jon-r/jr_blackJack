@@ -26,6 +26,14 @@ var deck = {
     deck.count = deck.cards.length;
   },
 
+  drawOne: function() {
+    var rng = Math.floor(Math.random() * deck.count);
+    output = deck.cards.splice(rng,1);
+
+    deck.count--;
+    return output[0];
+  },
+
   draw: function(num) {
     var i, output = [];
 
@@ -45,72 +53,102 @@ var player = {
   hardAce: true,
   hand: [],
   bet: 0,
-  firstDraw: function() {
-    player.hand = deck.draw(2);
 
-    player.hand.forEach( function(card) {
-      player.score += cardValue(card);
-      table.addPlayerCard(card);
-    });
-
-    player.checkScore(true);
-  },
 
   hit: function() {
-    player.hand = deck.draw(1);
-    var card = player.hand[0];
+    var card = deck.drawOne();
 
     player.score += cardValue(card);
+    player.hand.push(card);
     table.addPlayerCard(card);
-
-    player.checkScore(false);
   },
-
-  checkScore: function(isFirst) {
-    var scoreStr = '0';
-    var firstScore = isFirst || false;
-    var hasAce = player.hand.some(function(val) {
-      return val[0] === 0;
-    });
-
-    if (firstScore && hasAce && player.score == 21) {
-      scoreStr = 'BlackJack';
-      //table.win();
-
-    } else if (firstScore && hasAce) {
-      scoreStr = 'Soft ' + player.score;
-      player.hardAce = false;
-
-    } else if (player.score > 21 && !player.hardAce) {
-      player.score = player.score - 10;
-      player.hardAce = true;
-      scoreStr = player.score;
-
-    } else if (player.score > 21) {
-      scoreStr = 'Break'
-      //table.lose();
-
-    } else {
-      scoreStr = player.score;
-    }
-    console.log(scoreStr);
-    table.playerScoreBoard.textContent = scoreStr;
+  stand : function() {
+    dealer.play();
   }
-
 }
 
 var dealer = {
   score: 0,
-  cards: []
+  hardAce: true,
+  hand: [],
+
+  hit: function() {
+    var card = deck.drawOne();
+
+    dealer.score += cardValue(card);
+    dealer.hand.push(card);
+    table.addDealerCard(card);
+
+    //table.dealerScoreBoard.textContent = score.check(dealer);
+  },
+
+  play: function() {
+    dealer.blankRm();
+    if (dealer.score < 17) { while (dealer.score < 17) {
+      dealer.hit();
+    }}
+    table.endGame();
+  },
+
+  blankAdd: function() {
+    var card = document.createElement('div');
+
+    card.className = 'card blank';
+    table.dealerHand.appendChild(card);
+  },
+  blankRm : function() {
+    var i, blankCards = table.dealerHand.getElementsByClassName('blank'),
+        n = blankCards.length;
+    for (i = 0; i < n; i++) {
+      table.dealerHand.removeChild(blankCards[i]);
+    }
+
+
+  }
+}
+
+var score = {
+  check: function(target) {
+    var scoreStr = '0';
+    var firstScore = target.hand.length < 3;
+    var hasAce = target.hand.some(function(val) {
+      return val[0] === 0;
+    });
+
+    if (firstScore && target.score == 21) {
+      scoreStr = 'BlackJack';
+      dealer.play();
+      //table.win();
+
+    } else if (firstScore && hasAce) {
+      scoreStr = 'Soft ' + target.score;
+      target.hardAce = false;
+
+    } else if (target.score > 21 && !target.hardAce) {
+      target.score = target.score - 10;
+      target.hardAce = true;
+      scoreStr = target.score;
+
+    } else if (target.score > 21) {
+      scoreStr = 'Bust'
+      dealer.play();
+
+    } else {
+      scoreStr = target.score;
+    }
+   console.log(target.hand);
+    return scoreStr;
+   // table.playerScoreBoard.textContent = scoreStr;
+  }
 }
 
 var table = {
+  options: {},
 
-
-  newGame: function(options) {
+  newGame: function() {
     var defaults = {
-      tableElement : options.tableElement === undefined ? '#jr_cardTable' : options.tableElement,
-      deckCount : options.deckCount === undefined ? 6 : options.deckCount
+      tableElement : table.options.tableElement === undefined ? '#jr_cardTable' : table.options.tableElement,
+      deckCount : table.options.deckCount === undefined ? 6 : table.options.deckCount
     },
       output = document.querySelector(defaults.tableElement);
 
@@ -119,19 +157,44 @@ var table = {
     table.playerHand = output.getElementsByClassName('player-hand')[0];
     table.playerScoreBoard = output.getElementsByClassName('player-score')[0];
 
+    player.score = dealer.score = table.dealerScoreBoard.textContent = table.playerScoreBoard.textContent = 0;
+    player.hand = dealer.hand = [];
+
+    [table.dealerHand,table.playerHand].forEach(function(el) {
+      while (el.firstChild) {
+        el.removeChild(el.firstChild);
+      }
+    })
 
     deck.build(defaults.deckCount);
 
-    player.firstDraw();
+    player.hit();
+    dealer.blankAdd();
+    player.hit();
+    dealer.hit();
 
   },
 
   addPlayerCard: function(card) {
+    table.playerScoreBoard.textContent = score.check(player);
     table.playerHand.appendChild(cardVisual(card));
   },
 
   addDealerCard: function(card) {
+    table.dealerScoreBoard.textContent = score.check(dealer);
     table.dealerHand.appendChild(cardVisual(card));
+  },
+
+  endGame: function() {
+    var result;
+    if ((player.score > dealer.score || dealer.score > 21) && player.score < 22 ) {
+      result = 'player wins'
+    } else if (player.score == dealer.score) {
+      result = 'push';
+    } else {
+      result = 'dealer wins'
+    }
+    console.log(result);
   }
 
 }
@@ -165,10 +228,12 @@ function cardVisual(cardArr) {
   return card;
 }
 
-table.newGame({
+table.options = {
   tableElement : '#jr_cardTable',
   deckCount : 1
-});
+}
+
+table.newGame();
 
 
 
