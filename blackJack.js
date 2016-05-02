@@ -3,16 +3,14 @@
 var output = document.getElementById('js_output');
 
 var deck = {
-  count: 0,
-  cards: [],
-  table: '',
 
-
-  build: function (deckCount) {
+  build: function () {
     //decks
     var i,j,k;
 
-    for (i = 0; i < deckCount; i++) {
+    deck.cards = [];
+
+    for (i = 0; i < deck.deckCount; i++) {
       //suits
       for (j = 0; j < 4; j++) {
         //deck
@@ -39,7 +37,7 @@ var deck = {
 
     for (i = 0; i < num; i++) {
       var rng = Math.floor(Math.random() * deck.count);
-      output = output.concat(deck.cards.splice(rng,1));
+      output.concat(deck.cards.splice(rng,1));
 
       deck.count--;
     }
@@ -136,29 +134,33 @@ var score = {
     } else {
       scoreStr = target.score;
     }
-   console.log(target.hand);
+  // console.log(target.hand);
     return scoreStr;
    // table.playerScoreBoard.textContent = scoreStr;
   }
 }
 
 var table = {
-  options: {},
-
-  newGame: function() {
+  init: function(options) {
     var defaults = {
-      tableElement : table.options.tableElement === undefined ? '#jr_cardTable' : table.options.tableElement,
-      deckCount : table.options.deckCount === undefined ? 6 : table.options.deckCount
+      tableElement : options.tableElement === undefined ? '#jr_cardTable' : options.tableElement,
+      deckCount : options.deckCount === undefined ? 6 : options.deckCount
     },
       output = document.querySelector(defaults.tableElement);
 
+    deck.deckCount = defaults.deckCount;
     table.dealerHand = output.getElementsByClassName('dealer-hand')[0];
     table.dealerScoreBoard = output.getElementsByClassName('dealer-score')[0];
     table.playerHand = output.getElementsByClassName('player-hand')[0];
     table.playerScoreBoard = output.getElementsByClassName('player-score')[0];
+  },
+
+  newGame: function() {
+
 
     player.score = dealer.score = table.dealerScoreBoard.textContent = table.playerScoreBoard.textContent = 0;
-    player.hand = dealer.hand = [];
+    player.hand = [];
+    dealer.hand = [];
 
     [table.dealerHand,table.playerHand].forEach(function(el) {
       while (el.firstChild) {
@@ -166,13 +168,12 @@ var table = {
       }
     })
 
-    deck.build(defaults.deckCount);
+    deck.build();
 
     player.hit();
     dealer.blankAdd();
     player.hit();
     dealer.hit();
-
   },
 
   addPlayerCard: function(card) {
@@ -228,10 +229,10 @@ function cardVisual(cardArr) {
   return card;
 }
 
-table.options = {
+table.init({
   tableElement : '#jr_cardTable',
   deckCount : 1
-}
+});
 
 table.newGame();
 
