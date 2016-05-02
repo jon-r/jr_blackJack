@@ -42,8 +42,61 @@ var deck = {
 
 var player = {
   score: 0,
-  cards: [],
-  bet: 0
+  hardAce: true,
+  hand: [],
+  bet: 0,
+  firstDraw: function() {
+    player.hand = deck.draw(2);
+
+    player.hand.forEach( function(card) {
+      player.score += cardValue(card);
+      table.addPlayerCard(card);
+    });
+
+    player.checkScore(true);
+  },
+
+  hit: function() {
+    player.hand = deck.draw(1);
+    var card = player.hand[0];
+
+    player.score += cardValue(card);
+    table.addPlayerCard(card);
+
+    player.checkScore(false);
+  },
+
+  checkScore: function(isFirst) {
+    var scoreStr = '0';
+    var firstScore = isFirst || false;
+    var hasAce = player.hand.some(function(val) {
+      return val[0] === 0;
+    });
+
+    if (firstScore && hasAce && player.score == 21) {
+      scoreStr = 'BlackJack';
+      //table.win();
+
+    } else if (firstScore && hasAce) {
+      scoreStr = 'Soft ' + player.score;
+      player.hardAce = false;
+
+    } else if (player.score > 21 && !player.hardAce) {
+      player.score = player.score - 10;
+      player.hardAce = true;
+      scoreStr = player.score;
+
+    } else if (player.score > 21) {
+      scoreStr = 'Break'
+      //table.lose();
+
+    } else {
+      scoreStr = player.score;
+    }
+    console.log(scoreStr);
+    table.playerScoreBoard.textContent = scoreStr;
+  }
+
 }
 
 var dealer = {
@@ -69,39 +122,18 @@ var table = {
 
     deck.build(defaults.deckCount);
 
-    table.hitPlayer();
+    player.firstDraw();
+
   },
 
-  hitDealer: function() {
-    var card = deck.draw(1)[0];
-    //card = cardVisual(cards[0]);
-    dealer.cards.push(card);
-    dealer.score += cardValue(card);
-    //dealer.cards.appendChild(card);
-    table.dealerHand.appendChild(cardVisual(card))
-    table.updateDealer();
-  },
-
-  hitPlayer: function() {
-    var card = deck.draw(1)[0];
-
-    player.cards.push(card);
-    player.score += cardValue(card);
+  addPlayerCard: function(card) {
     table.playerHand.appendChild(cardVisual(card));
-
-    console.log(card);
-
-    if (player.cards.length < 3 && card[0] == 0) {
-      table.playerScoreBoard.textContent = 'Soft ' + player.score;
-    } else {
-      table.playerScoreBoard.textContent = player.score;
-    }
   },
 
-
-  updateDealer: function() {
-    table.dealerScoreBoard.textContent = dealer.score;
+  addDealerCard: function(card) {
+    table.dealerHand.appendChild(cardVisual(card));
   }
+
 }
 
 function cardValue(cardArr) {
