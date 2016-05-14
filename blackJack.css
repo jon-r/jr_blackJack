@@ -24,13 +24,17 @@ html {
   left:0;
   right:0;
 }
-/*
-.dealer-hand {
+
+.dealer-score {
+  position: absolute;
   top: 20px;
+  right: 20px;
 }
-.player-hand {
+.player-score {
+  position: absolute;
+  right: 20px;
   bottom: 20px;
-}*/
+}
 .card {
   display: inline-block;
   width: 50px;
@@ -43,8 +47,8 @@ html {
   position: absolute;
   font-weight: bold;
 
-  -webkit-transition: all 400ms ease-out;
-  transition: all 400ms ease-out;
+  -webkit-transition: top 400ms ease-out, left 400ms ease-out, transform 100ms ease;
+  transition: top 400ms ease-out, left 400ms ease-out, transform 100ms ease;
 }
 
 .card.hearts, .card.diamonds {
