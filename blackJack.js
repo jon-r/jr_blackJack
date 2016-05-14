@@ -92,7 +92,7 @@ var dealer = {
       } else {
         table.endGame();
       }
-    }, 700)
+    }, 400)
   },
 
   blankAdd: function() {
@@ -100,12 +100,15 @@ var dealer = {
 
     card.className = 'card blank';
     table.dealerHand.appendChild(card);
+    card.style.transform = 'translateX(-5vw)';
+    window.getComputedStyle(card).transition;
+    card.style.transform = 'translateX(0)';
   },
   blankRm : function() {
     var i, blankCards = table.dealerHand.getElementsByClassName('blank'),
         n = blankCards.length;
     for (i = 0; i < n; i++) {
-      table.dealerHand.removeChild(blankCards[i]);
+        table.dealerHand.removeChild(blankCards[i]);
     }
 
   }
@@ -120,8 +123,8 @@ var score = {
     });
 
     if (firstScore && target.score == 21) {
-      scoreStr = 'BlackJack';
-      dealer.play();
+      scoreStr = 'BlackJack ' + target.score;
+      dealer.autoPlay();
       //table.win();
 
     } else if (firstScore && hasAce) {
@@ -134,8 +137,8 @@ var score = {
       scoreStr = target.score;
 
     } else if (target.score > 21) {
-      scoreStr = 'Bust'
-      dealer.play();
+      scoreStr = 'Bust ' + target.score;
+      dealer.autoPlay();
 
     } else {
       scoreStr = target.score;
@@ -155,10 +158,23 @@ var table = {
       output = document.querySelector(defaults.tableElement);
 
     deck.deckCount = defaults.deckCount;
-    table.dealerHand = output.getElementsByClassName('dealer-hand')[0];
+
+    ['dealer','player'].forEach(function(el) {
+      var hand = document.createElement('div'),
+      scoreBoard = document.createElement('div');
+      table[el + 'Hand'] = hand;
+      table[el + 'ScoreBoard'] = scoreBoard;
+      hand.className = el + '-hand';
+      scoreBoard.className = el + '-score';
+
+      output.appendChild(hand);
+      output.appendChild(scoreBoard);
+    })
+
+/*    table.dealerHand = output.getElementsByClassName('dealer-hand')[0];
     table.dealerScoreBoard = output.getElementsByClassName('dealer-score')[0];
     table.playerHand = output.getElementsByClassName('player-hand')[0];
-    table.playerScoreBoard = output.getElementsByClassName('player-score')[0];
+    table.playerScoreBoard = output.getElementsByClassName('player-score')[0];*/
   },
 
   newGame: function() {
@@ -176,17 +192,38 @@ var table = {
 
     deck.build();
 
-    var setup = delay(player.hit, 600).delay(dealer.hit, 600).delay(player.hit, 600).delay(dealer.blankAdd, 600);
+    var setup = delay(player.hit, 400).delay(dealer.hit, 400).delay(player.hit, 400).delay(dealer.blankAdd, 400);
   },
 
   addPlayerCard: function(card) {
     table.playerScoreBoard.textContent = score.check(player);
-    table.playerHand.appendChild(cardVisual(card));
+    var newCard = cardVisual(card),
+      newLeft = (55 * player.hand.length);
+
+
+    table.playerHand.appendChild(newCard);
+    newCard.style.bottom = 'calc(100% - 20px)';
+    newCard.style.left = 'calc(100% - 20px)';
+    window.getComputedStyle(newCard).bottom;
+    window.getComputedStyle(newCard).left;
+    newCard.style.bottom = '20px';
+    newCard.style.left = newLeft + 'px';
+
   },
 
   addDealerCard: function(card) {
     table.dealerScoreBoard.textContent = score.check(dealer);
-    table.dealerHand.appendChild(cardVisual(card));
+
+    var newCard = cardVisual(card),
+      newLeft = (55 * player.hand.length);
+
+
+    table.playerHand.appendChild(newCard);
+    newCard.style.top = '20px';
+    newCard.style.left = 'calc(100% - 20px)';
+    window.getComputedStyle(newCard).top;
+    window.getComputedStyle(newCard).left;
+    newCard.style.left = newLeft + 'px';
   },
 
   endGame: function() {
@@ -224,6 +261,7 @@ function cardVisual(cardArr) {
     cardDes = document.createElement('div');
 
   card.className = 'card ' + suits[cardArr[1]];
+
   cardVal.innerHTML = faces[cardArr[0]] || cardArr[0] + 1;
 
   card.appendChild(cardVal);
