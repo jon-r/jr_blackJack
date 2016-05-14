@@ -61,7 +61,7 @@ var player = {
     table.addPlayerCard(card);
   },
   stand : function() {
-    dealer.play();
+    dealer.autoPlay();
   }
 }
 
@@ -71,6 +71,7 @@ var dealer = {
   hand: [],
 
   hit: function() {
+
     var card = deck.drawOne();
 
     dealer.score += cardValue(card);
@@ -80,12 +81,18 @@ var dealer = {
     //table.dealerScoreBoard.textContent = score.check(dealer);
   },
 
-  play: function() {
-    dealer.blankRm();
-    if (dealer.score < 17) { while (dealer.score < 17) {
-      dealer.hit();
-    }}
-    table.endGame();
+
+  autoPlay: function() {
+
+    setTimeout(function() {
+      dealer.blankRm();
+      if (dealer.score < 17) {
+        dealer.hit();
+        dealer.autoPlay();
+      } else {
+        table.endGame();
+      }
+    }, 700)
   },
 
   blankAdd: function() {
@@ -100,7 +107,6 @@ var dealer = {
     for (i = 0; i < n; i++) {
       table.dealerHand.removeChild(blankCards[i]);
     }
-
 
   }
 }
@@ -170,10 +176,7 @@ var table = {
 
     deck.build();
 
-    player.hit();
-    dealer.blankAdd();
-    player.hit();
-    dealer.hit();
+    var setup = delay(player.hit, 600).delay(dealer.hit, 600).delay(player.hit, 600).delay(dealer.blankAdd, 600);
   },
 
   addPlayerCard: function(card) {
@@ -227,6 +230,45 @@ function cardVisual(cardArr) {
   card.appendChild(cardDes);
 
   return card;
+}
+
+//http://stackoverflow.com/a/6921279
+function delay(fn, t) {
+  // private instance variables
+  var queue = [],
+    self, timer;
+
+  function schedule(fn, t) {
+    timer = setTimeout(function () {
+      timer = null;
+      fn();
+      if (queue.length) {
+        var item = queue.shift();
+        schedule(item.fn, item.t);
+      }
+    }, t);
+  }
+  self = {
+    delay: function (fn, t) {
+      // if already queuing things or running a timer,
+      //   then just add to the queue
+      if (queue.length || timer) {
+        queue.push({
+          fn: fn,
+          t: t
+        });
+      } else {
+        // no queue or timer yet, so schedule the timer
+        schedule(fn, t);
+      }
+      return self;
+    },
+    cancel: function () {
+      clearTimeout(timer);
+      queue = [];
+    }
+  };
+  return self.delay(fn, t);
 }
 
 table.init({
