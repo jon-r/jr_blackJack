@@ -3,7 +3,8 @@
 }
 
 html {
-  font-family: arial, helvetica, sans-serif;
+
+  font: 1vw georgia, serif;
 }
 
 .table {
@@ -15,16 +16,32 @@ html {
   max-width: 800px;
   margin:0 auto;
   position: relative;
+
+}
+
+
+.control-box {
+  position: absolute;
+  top: 100px;
+  left: -120px;
+}
+.ctrl {
+  border: solid 2px;
+  border-radius: 10px;
+  padding: 5px;
+  width:100px;
+  height: 36px;
+  display: block;
+  text-align: center;
+  margin: 3px;
+  background: #dedede;
 }
 
 .score {
-  position: absolute;
   color:white;
-  font: 1vw georgia, serif;
-  top:calc(100% - 70px);
+  position: absolute;
+  top:320px;
 }
-
-
 
 .player-0.score {left: calc(50% - 40px); top: 100px}
 .player-1.score {left: calc(0% + 10px)}
@@ -32,10 +49,6 @@ html {
 .player-3.score {left: calc(40% + 10px)}
 .player-4.score {left: calc(60% + 10px)}
 .player-5.score {left: calc(80% + 10px)}
-
-
-
-
 
 .card {
   display: inline-block;

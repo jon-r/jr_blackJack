@@ -13,15 +13,34 @@ var game = {
       tableElement : options.hasOwnProperty('tableElement') ? options.tableElement : '#jr_cardTable',
       deckCount : options.hasOwnProperty('deckCount') ? options.deckCount : 6,
       players : options.hasOwnProperty('players') ? options.players : ['player']
+    }, control = {
+      parent : document.createElement('div'),
     };
+
+
 
     deck.deckCount = config.deckCount;
 
-    config.players.unshift('dealer');
+    config.players.unshift('Dealer');
 
     game.playerCount = config.players.length;
 
     table.output = document.querySelector(config.tableElement);
+
+
+    control.parent.className = 'control-box';
+    ['hit', 'stand', 'restart'].forEach(function(name) {
+      var newCtrl = document.createElement('button');
+      newCtrl.className = 'ctrl ctrl-' + name;
+      newCtrl.innerHTML = name;
+      newCtrl.addEventListener('click', table[name]);
+      control.parent.appendChild(newCtrl);
+      control[name] = newCtrl;
+    })
+
+
+    table.output.appendChild(control.parent);
+    table.control = control;
 
     for (i = 0; i < game.playerCount; i++) {
       game.players[i] = new Player(config.players[i]);
@@ -29,13 +48,13 @@ var game = {
 
       table.players[i].cardTop = i == 0 ? '20px' : 'calc(100% - 150px)';
 
-      ['hand', 'score'].forEach(function (name) {
+      ['hand', 'score', 'title'].forEach(function (name) {
         var newEl = document.createElement('div');
         newEl.className = 'player-' + i + ' ' + name;
         table.output.appendChild(newEl);
         table.players[i][name] = newEl;
-
       })
+
     }
 
     game.newGame();
@@ -47,23 +66,25 @@ var game = {
 
     //resets the scores and table
     for (i = 0; i < game.playerCount; i++) {
-      game.players[i].restore();
-      while (table.players[i].hand.firstChild) {
-        table.players[i].hand.removeChild(
-          table.players[i].hand.firstChild
+      var tblPlay = table.players[i], player = game.players[i];
+      player.restore();
+      while (tblPlay.hand.firstChild) {
+        tblPlay.hand.removeChild(
+          tblPlay.hand.firstChild
         );
       }
-      table.players[i].score.innerHTML = 0;
+      tblPlay.score.innerHTML = 0;
+      tblPlay.title.innerHTML = player.name;
     }
 
-    game.firstDeal(game.currentPlayer);
+    game.dealAll(game.currentPlayer);
 
 
     console.log(table);
 
 
   },
-  firstDeal: function () {
+  dealAll: function () {
     var players = game.players, currentPlayer = players[game.currentPlayer], dealer = players[0];
     setTimeout(function() {
 
@@ -72,7 +93,9 @@ var game = {
       game.nextPlayer();
 
       if (dealer.cardsCount < 2) {
-        game.firstDeal();
+        game.dealAll();
+      } else {
+
       }
 
     }, 300);
@@ -80,7 +103,9 @@ var game = {
 
   nextPlayer: function () {
     var current = game.currentPlayer;
+    table.players[current].title.classList.remove('active');
     game.currentPlayer = (current == game.playerCount - 1) ? 0 : current + 1;
+    table.players[game.currentPlayer].title.classList.add('active');
   }
 
 }
@@ -125,8 +150,16 @@ var table = {
   },
   stand: function () {
     game.nextPlayer();
+    if (game.currentPlayer == 0) {
+       game.players[game.currentPlayer].autoPlay();
+    }
+  },
+  restart: function () {
+    game.newGame();
   }
+
 }
+
 
 function Player(name) {
 
@@ -189,6 +222,18 @@ function Player(name) {
       }
     },
 
+    autoPlay: function () {
+
+      setTimeout(function() {
+        if (out.score < 17) {
+          out.hit();
+          out.autoPlay();
+        } else {
+        //  game.endGame();
+        }
+      }, 400)
+  },
+
   };
   return out;
 }
@@ -203,6 +248,10 @@ var score = {
     if (firstScore && target.score == 21) {
       scoreStr = 'BlackJack ' + target.score;
       game.nextPlayer();
+      if (game.currentPlayer == 0) {
+        game.players[game.currentPlayer].autoPlay();
+      }
+
       //table.win();
 
     } else if (firstScore && hasAce) {
@@ -217,6 +266,9 @@ var score = {
     } else if (target.score > 21) {
       scoreStr = 'Bust ' + target.score;
       game.nextPlayer();
+      if (game.currentPlayer == 0) {
+        game.players[game.currentPlayer].autoPlay();
+      }
 
     } else {
       scoreStr = target.score;
@@ -296,4 +348,4 @@ function delay(fn, t) {
   return self.delay(fn, t);
 }
 
-game.init({players: ['player-1','player-2','player-3','player-4','player-5' ]});
+game.init({players: ['Jon','Jim']});
