@@ -11,30 +11,32 @@ html {
   padding: 20px;
   border:solid 4px brown;
   width:100%;
-  height: 300px;
-  max-width: 600px;
+  height: 400px;
+  max-width: 800px;
   margin:0 auto;
   position: relative;
 }
 
-.dealer-hand, .player-hand {
- position: absolute;
-  top:0;
-  bottom:0;
-  left:0;
-  right:0;
+.score {
+  position: absolute;
+  color:white;
+  font: 1vw georgia, serif;
+  top:calc(100% - 70px);
 }
 
-.dealer-score {
-  position: absolute;
-  top: 20px;
-  right: 20px;
-}
-.player-score {
-  position: absolute;
-  right: 20px;
-  bottom: 20px;
-}
+
+
+.player-0.score {left: calc(50% - 40px); top: 100px}
+.player-1.score {left: calc(0% + 10px)}
+.player-2.score {left: calc(20% + 10px)}
+.player-3.score {left: calc(40% + 10px)}
+.player-4.score {left: calc(60% + 10px)}
+.player-5.score {left: calc(80% + 10px)}
+
+
+
+
+
 .card {
   display: inline-block;
   width: 50px;
@@ -47,16 +49,20 @@ html {
   position: absolute;
   font-weight: bold;
 
-  -webkit-transition: top 400ms ease-out, left 400ms ease-out, transform 100ms ease;
-  transition: top 400ms ease-out, left 400ms ease-out, transform 100ms ease;
+  -webkit-transition: top 400ms ease-out, left 400ms ease-out, transform 150ms ease;
+  transition: top 400ms ease-out, left 400ms ease-out, transform 150ms ease;
 }
 
 .card.hearts, .card.diamonds {
   color:red;
 }
+.card.hearts, .card.diamonds, .card.clubs, .card.spades {
+  z-index: 5;
+}
 
 .card.blank {
   background: url(card-back.svg) center/cover , #c97272;
+
 }
 
 .card div {

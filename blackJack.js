@@ -1,69 +1,95 @@
 "use strict";
 
-function player(name) {
+var i, j, k;
 
-  var out = {
+var game = {
+  players: [],
+  playerCount: 0,
+  currentPlayer: 1,
 
-    name: name,
+  init: function (options) {
+    options = options || {};
+    var config = {
+      tableElement : options.hasOwnProperty('tableElement') ? options.tableElement : '#jr_cardTable',
+      deckCount : options.hasOwnProperty('deckCount') ? options.deckCount : 6,
+      players : options.hasOwnProperty('players') ? options.players : ['player']
+    };
 
-    restore: function() {
-      out.score = 0;
-      out.hand = [];
-      out.cardsCount = 0;
-    },
+    deck.deckCount = config.deckCount;
 
-    deal: function() {
-      var newCard = document.createElement('div'),
-        newLeft = (out.cardsCount * 55) + 10;
-      newCard.className = 'card blank';
-      table[out.name].hand.appendChild(newCard);
+    config.players.unshift('dealer');
 
-      newCard.style.top = '50px';
-      newCard.style.left = 'calc(100% - 20px)';
-      window.getComputedStyle(newCard).top;
-      window.getComputedStyle(newCard).left;
-      newCard.style.top = table[out.name].cardTop;
-      newCard.style.left = newLeft + 'px';
+    game.playerCount = config.players.length;
 
-      out.cardsCount++;
-    },
+    table.output = document.querySelector(config.tableElement);
 
-    hit: function() {
-      var nth = out.hand.length;
-      if (nth < out.cardsCount) {
-        var card = deck.drawOne();
-        //var cardFace = cardVisual(card);
-        out.score += cardValue(card);
-        out.hand.push(card);
+    for (i = 0; i < game.playerCount; i++) {
+      game.players[i] = new Player(config.players[i]);
+      table.players[i] = {};
 
-        var flipped = table[out.name].hand.getElementsByClassName('card')[nth],
+      table.players[i].cardTop = i == 0 ? '20px' : 'calc(100% - 150px)';
 
-        flipping = delay(function() {
-          flipped.style.transform = 'rotateY(90deg)';
-        }, 0)
-        .delay(function() {
-          cardSet(flipped,card);
-        },100)
-        .delay(function() {
-          flipped.style.transform = 'rotateY(0)';
-        }, 100);
+      ['hand', 'score'].forEach(function (name) {
+        var newEl = document.createElement('div');
+        newEl.className = 'player-' + i + ' ' + name;
+        table.output.appendChild(newEl);
+        table.players[i][name] = newEl;
 
-        table[out.name].score.textContent = score.check(this);
-
-      } else {
-        out.deal();
-        out.hit();
-      }
+      })
     }
+
+    game.newGame();
+  },
+
+  newGame: function () {
+
+    deck.build();
+
+    //resets the scores and table
+    for (i = 0; i < game.playerCount; i++) {
+      game.players[i].restore();
+      while (table.players[i].hand.firstChild) {
+        table.players[i].hand.removeChild(
+          table.players[i].hand.firstChild
+        );
+      }
+      table.players[i].score.innerHTML = 0;
+    }
+
+    game.firstDeal(game.currentPlayer);
+
+
+    console.log(table);
+
+
+  },
+  firstDeal: function () {
+    var players = game.players, currentPlayer = players[game.currentPlayer], dealer = players[0];
+    setTimeout(function() {
+
+      currentPlayer.deal();
+
+      game.nextPlayer();
+
+      if (dealer.cardsCount < 2) {
+        game.firstDeal();
+      }
+
+    }, 300);
+  },
+
+  nextPlayer: function () {
+    var current = game.currentPlayer;
+    game.currentPlayer = (current == game.playerCount - 1) ? 0 : current + 1;
   }
-  return out;
+
 }
 
 var deck = {
 
   build: function () {
     //decks
-    var i,j,k;
+
 
     deck.cards = [];
 
@@ -91,85 +117,92 @@ var deck = {
 };
 
 var table = {
-  output : {},
-  dealer : {
-    cardTop: '20px'
-  },
-  player : {
+  output: {},
+  players: [],
 
-    cardTop: 'calc(100% - 90px)'
+  hit: function () {
+    game.players[game.currentPlayer].hit();
+  },
+  stand: function () {
+    game.nextPlayer();
   }
 }
 
+function Player(name) {
 
-var game = {
-  player: {
+  var out = {
 
-  },
-  dealer: {
+    name: name,
 
-  },
+    restore: function () {
+      out.score = 0;
+      out.hand = [];
+      out.cardsCount = 0;
+      out.hardAce = true;
+    },
 
-  init: function(options) {
-    options = options || {};
-    var config = {
-      tableElement : options.hasOwnProperty('tableElement') ? options.tableElement : '#jr_cardTable',
-      deckCount : options.hasOwnProperty('deckCount') ? options.deckCount : 6
-    }
+    deal: function () {
+      var newCard = document.createElement('div'),
+        current = table.players[game.currentPlayer],
+        newTop = current.cardTop,
+        newLeft = game.currentPlayer != 0 ? 'calc(' + ((game.currentPlayer - 1)  * 20) + '% + ' + ((out.cardsCount * 20) + 10) + 'px)' : 'calc(50% + ' + ((out.cardsCount * 20) - 40) + 'px)';
+      newCard.className = 'card blank';
+      current.hand.appendChild(newCard);
 
-    deck.deckCount = config.deckCount;
+      newCard.style.top = '50px';
+      newCard.style.left = 'calc(100% - 20px)';
+      window.getComputedStyle(newCard).top;
+      window.getComputedStyle(newCard).left;
+      newCard.style.top =  newTop;
+      newCard.style.left = newLeft;
 
-
-    table.output = document.querySelector(config.tableElement);
-
-    allPayers.forEach(function (el) {
-
-      game[el] = new player(el);
-
-      ['hand', 'score'].forEach(function (name) {
-
-        table[el][name] = document.createElement('div'),
-        table[el][name].className = el + '-' + name;
-        table.output.appendChild(table[el][name]);
-      })
-
-    })
+      out.cardsCount++;
+    },
 
 
+    hit: function () {
+      var nth = out.hand.length, current = table.players[game.currentPlayer];
+      if (nth < out.cardsCount) {
+        var card = deck.drawOne();
+        //var cardFace = cardVisual(card);
+        out.score += cardValue(card);
+        out.hand.push(card);
 
-    game.newGame();
-  },
+        var flipped = current.hand.getElementsByClassName('card')[nth],
 
-  newGame: function() {
-    deck.build();
+        flipping = delay(function() {
+          flipped.style.transform = 'translateY(-80px) rotateX(-90deg)';
+        }, 0)
+        .delay(function() {
+          cardSet(flipped,card);
+        },150)
+        .delay(function() {
+          flipped.style.transform = 'rotateX(0)';
 
-    allPayers.forEach(function(el) {
-      game[el].restore();
-    });
+        }, 150);
 
-    console.log(game.dealer);
+        current.score.textContent = score.check(this);
 
-    var setup = delay(game.player.hit, 300)
-    .delay(game.dealer.hit, 300)
-    .delay(game.player.hit, 300)
-    .delay(game.dealer.deal, 300);
-  }
+      } else {
+        out.deal();
+        out.hit();
+      }
+    },
 
+  };
+  return out;
 }
-
-var allPayers = ['dealer', 'player'];
 
 var score = {
-  check: function(target) {
-    var scoreStr = '0';
-    var firstScore = target.hand.length < 3;
-    var hasAce = target.hand.some(function(val) {
-      return val[0] === 0;
+  check: function (target) {
+    var scoreStr = '0', firstScore = target.hand.length < 3,
+      hasAce = target.hand.some(function(val) {
+        return val[0] === 0;
     });
 
     if (firstScore && target.score == 21) {
       scoreStr = 'BlackJack ' + target.score;
-      dealer.autoPlay();
+      game.nextPlayer();
       //table.win();
 
     } else if (firstScore && hasAce) {
@@ -183,7 +216,7 @@ var score = {
 
     } else if (target.score > 21) {
       scoreStr = 'Bust ' + target.score;
-      dealer.autoPlay();
+      game.nextPlayer();
 
     } else {
       scoreStr = target.score;
@@ -193,6 +226,7 @@ var score = {
    // table.playerScoreBoard.textContent = scoreStr;
   }
 }
+
 
 function cardValue(cardArr) {
   var out, value = cardArr[0];
@@ -262,4 +296,4 @@ function delay(fn, t) {
   return self.delay(fn, t);
 }
 
-game.init();
+game.init({players: ['player-1','player-2','player-3','player-4','player-5' ]});
