@@ -37,6 +37,10 @@ html {
   background: #dedede;
 }
 
+.title.active {
+  color: white;
+}
+
 .score {
   color:white;
   position: absolute;

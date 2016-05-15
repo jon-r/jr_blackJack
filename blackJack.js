@@ -63,7 +63,7 @@ var game = {
   newGame: function () {
 
     deck.build();
-
+    game.currentPlayer = 1;
     //resets the scores and table
     for (i = 0; i < game.playerCount; i++) {
       var tblPlay = table.players[i], player = game.players[i];
@@ -80,7 +80,6 @@ var game = {
     game.dealAll(game.currentPlayer);
 
 
-    console.log(table);
 
 
   },
@@ -348,4 +347,9 @@ function delay(fn, t) {
   return self.delay(fn, t);
 }
 
-game.init({players: ['Jon','Jim']});
+game.init({
+  decks: 6,
+  players: [
+    'Adam','Beth','Chris','Denise','Edward'
+  ]
+});
