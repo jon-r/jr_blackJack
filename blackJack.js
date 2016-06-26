@@ -43,18 +43,25 @@ var game = {
     table.control = control;
 
     for (i = 0; i < game.playerCount; i++) {
-      game.players[i] = new Player(config.players[i]);
-      table.players[i] = {};
 
+
+      game.players[i] = new Player(config.players[i]);
+
+      table.players[i] = {};
       table.players[i].cardTop = i == 0 ? '20px' : 'calc(100% - 150px)';
 
-      ['hand', 'score', 'title'].forEach(function (name) {
-        var newEl = document.createElement('div');
-        newEl.className = 'player-' + i + ' ' + name;
-        table.output.appendChild(newEl);
-        table.players[i][name] = newEl;
-      })
+      var newPLayerFrame = document.createElement('div');
+      newPLayerFrame.className = 'player-frame player-' + i;
 
+      ['score', 'title', 'hand'].forEach(function (el) {
+        var newEl = document.createElement('div');
+        newEl.className = el;
+        newPLayerFrame.appendChild(newEl);
+        table.players[i][el] = newEl;
+      });
+
+      table.output.appendChild(newPLayerFrame);
+      table.players[i].parent = newPLayerFrame;
     }
 
     game.newGame();
@@ -176,18 +183,19 @@ function Player(name) {
     deal: function () {
       var newCard = document.createElement('div'),
         current = table.players[game.currentPlayer],
-        newTop = current.cardTop,
-        newLeft = game.currentPlayer != 0 ? 'calc(' + ((game.currentPlayer - 1)  * 20) + '% + ' + ((out.cardsCount * 20) + 10) + 'px)' : 'calc(50% + ' + ((out.cardsCount * 20) - 40) + 'px)';
-      newCard.className = 'card blank';
+        frame = current.parent,
+        goX = table.output.offsetWidth - frame.offsetLeft - (out.cardsCount * 20),
+        goY = frame.offsetTop;
+
+      newCard.className = 'card draw blank';
       current.hand.appendChild(newCard);
 
-      newCard.style.top = '50px';
-      newCard.style.left = 'calc(100% - 20px)';
-      window.getComputedStyle(newCard).top;
-      window.getComputedStyle(newCard).left;
-      newCard.style.top =  newTop;
-      newCard.style.left = newLeft;
+      newCard.style.transform = 'translate(' + goX + 'px,-' + goY + 'px)';
 
+      window.getComputedStyle(newCard).transform;
+
+      newCard.style.transform = '';
+      console.log(table.output.offsetWidth);
       out.cardsCount++;
     },
 
@@ -196,13 +204,13 @@ function Player(name) {
       var nth = out.hand.length, current = table.players[game.currentPlayer];
       if (nth < out.cardsCount) {
         var card = deck.drawOne();
-        //var cardFace = cardVisual(card);
         out.score += cardValue(card);
         out.hand.push(card);
 
         var flipped = current.hand.getElementsByClassName('card')[nth],
 
         flipping = delay(function() {
+          flipped.className = 'card blank';
           flipped.style.transform = 'translateY(-80px) rotateX(-90deg)';
         }, 0)
         .delay(function() {
@@ -216,8 +224,12 @@ function Player(name) {
         current.score.textContent = score.check(this);
 
       } else {
-        out.deal();
-        out.hit();
+        var temp = delay(function() {
+          out.deal();
+        },0)
+        .delay(function() {
+          out.hit();
+        }, 150)
       }
     },
 
@@ -256,6 +268,10 @@ var score = {
     } else if (firstScore && hasAce) {
       scoreStr = 'Soft ' + target.score;
       target.hardAce = false;
+
+    } else if (target.score == 21) {
+      scoreStr = target.score;
+      game.nextPlayer();
 
     } else if (target.score > 21 && !target.hardAce) {
       target.score = target.score - 10;

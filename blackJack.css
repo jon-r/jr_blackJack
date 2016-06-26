@@ -41,33 +41,29 @@ html {
   color: white;
 }
 
-.score {
-  color:white;
+.player-frame {
   position: absolute;
-  top:320px;
+  top:260px;
 }
 
-.player-0.score {left: calc(50% - 40px); top: 100px}
-.player-1.score {left: calc(0% + 10px)}
-.player-2.score {left: calc(20% + 10px)}
-.player-3.score {left: calc(40% + 10px)}
-.player-4.score {left: calc(60% + 10px)}
-.player-5.score {left: calc(80% + 10px)}
+.player-0.player-frame {top: 10px}
+/*.player-1.player-frame {left: 0%}*/
+.player-2.player-frame {left: 20%}
+.player-3.player-frame {left: 40%}
+.player-4.player-frame {left: 60%}
+.player-5.player-frame {left: 80%}
 
 .card {
   display: inline-block;
   width: 50px;
   height: 70px;
   background: white;
-  margin-right: 5px;
+  margin-right: -30px;
   border-radius: 3px;
   padding: 2px;
   overflow: hidden;
-  position: absolute;
   font-weight: bold;
-
-  -webkit-transition: top 400ms ease-out, left 400ms ease-out, transform 150ms ease;
-  transition: top 400ms ease-out, left 400ms ease-out, transform 150ms ease;
+  transition: transform 150ms ease;
 }
 
 .card.hearts, .card.diamonds {
@@ -75,11 +71,15 @@ html {
 }
 .card.hearts, .card.diamonds, .card.clubs, .card.spades {
   z-index: 5;
+
 }
 
 .card.blank {
   background: url(card-back.svg) center/cover , #c97272;
+}
 
+.card.draw {
+  transition-duration: 400ms;
 }
 
 .card div {
