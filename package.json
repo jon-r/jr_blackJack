@@ -1,0 +1,23 @@
+{
+  "name": "jr_blackjack",
+  "version": "1.1.0",
+  "description": "blackjack in plain javascript",
+  "main": "blackJack.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jon-r/jr_blackJack.git"
+  },
+  "author": "Jon Richards",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/jon-r/jr_blackJack/issues"
+  },
+  "homepage": "https://github.com/jon-r/jr_blackJack#readme",
+  "devDependencies": {
+    "eslint": "^3.10.2",
+    "eslint-config-google": "^0.7.0"
+  }
+}
