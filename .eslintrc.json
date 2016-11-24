@@ -1,25 +1,27 @@
 {
-    "env": {
-        "browser": true,
-        "es6": true
-    },
-    "extends": "eslint:recommended",
-    "rules": {
-        "indent": [
+  "env": {
+    "browser": true,
+    "es6": true
+  },
+  "extends": "eslint:recommended",
+  "rules": {
+    "indent": [
             "error",
             2
         ],
-        "linebreak-style": [
+    "linebreak-style": [
             "error",
             "unix"
         ],
-        "semi": [
+    "semi": [
             "error",
             "always"
         ],
-        "no-irregular-whitespace": [
+    "no-irregular-whitespace": [
           "error"
-        ]
+        ],
+    "no-console":0
 
-    }
+
+  }
 }
