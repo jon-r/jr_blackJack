@@ -23,8 +23,6 @@ window.addEventListener("ready", (function (doc) {
 
 
 
-
-
     }
 
 
@@ -76,8 +74,8 @@ window.addEventListener("ready", (function (doc) {
 
   /* - ui object ---------------------------------------------------------- */
   class ui {
-    constructor(baseEl) {
-      this.table = baseEl;
+    constructor(elQuery) {
+      this.table = doc.querySelector(elQuery);
 
     }
   }
