@@ -5,8 +5,8 @@ window.addEventListener("ready", (function (doc) {
   class Game {
 
     constructor(options) {
-      this.setConfig(options);
-
+      this.config = this.setConfig(options);
+      this.currentPlayer = 1;
       this.deck = new Deck(this.config.deckCount);
       this.players = this.config.players.map((n) => new Player(n));
       this.control = new Ui(this);
@@ -17,7 +17,7 @@ window.addEventListener("ready", (function (doc) {
     //game settings, with defaults
     setConfig(opts) {
       opts = opts || {};
-      this.config = {
+      return {
         tableElement: opts.tableElement || '#jr_cardTable',
         deckCount: opts.deckCount || 6,
         players: ['Dealer'].concat(opts.players || ['player-1'])
@@ -64,6 +64,7 @@ window.addEventListener("ready", (function (doc) {
     constructor(decksCount) {
       this.deckCount = decksCount;
       this.setDeck();
+      this.cards = [];
     }
 
     setDeck() {
@@ -95,8 +96,11 @@ window.addEventListener("ready", (function (doc) {
   class Player {
     constructor(name) {
       this.name = name;
-      this.reset();
-      this.output = {}; //set AFTER the initisl setup, since the ui doesnt exist yet
+      this.cardCount = 0;
+      this.score = 0;
+      this.hand = [];
+      this.hardAce = true;
+      this.output = {hand: null, score: '0', title: ''};
     }
 
     reset() {
@@ -107,13 +111,11 @@ window.addEventListener("ready", (function (doc) {
 
       let ui = this.output;
 
-      if (ui) {
-        ui.score.innerHTML = '0';
-        while (ui.hand.firstChild) {
-          ui.hand.removeChild(
-            ui.hand.firstChild
-          );
-        }
+      ui.score.innerHTML = '0';
+      while (ui.hand.firstChild) {
+        ui.hand.removeChild(
+          ui.hand.firstChild
+        );
       }
     }
 
