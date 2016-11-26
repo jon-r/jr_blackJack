@@ -15,7 +15,6 @@
 
   <path fill="url(#a)" stroke="#e7e4e4" stroke-width="2"  d="m5 5h90v130h-90z"  />
 
-
   <circle stroke="#8d1010" stroke-width="2" fill="#c97272" cx="50" cy="70" r="30" />
 
   <use x="22" y="0" xlink:href="#jr-logo" ></use>

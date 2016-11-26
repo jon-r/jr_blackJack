@@ -1,20 +1,15 @@
 window.addEventListener("ready", (function (doc) {
   "use strict";
 
-
   /* - game object -------------------------------------------------------- */
   class Game {
 
     constructor(options) {
       this.setConfig(options);
 
-
       this.deck = new Deck(this.config.deckCount);
-
       this.players = this.config.players.map((n) => new Player(n));
-
       this.control = new Ui(this);
-    //  this.linkUi();
 
       this.newGame();
     }
@@ -23,12 +18,9 @@ window.addEventListener("ready", (function (doc) {
     setConfig(opts) {
       opts = opts || {};
       this.config = {
-        tableElement: opts.hasOwnProperty('tableElement') ? opts.tableElement : '#jr_cardTable',
-        deckCount: opts.hasOwnProperty('deckCount') ? opts.deckCount : 6,
-        players: ['Dealer'].concat(
-          opts.hasOwnProperty('players') ? opts.players : ['player-1']
-        )
-
+        tableElement: opts.tableElement || '#jr_cardTable',
+        deckCount: opts.deckCount || 6,
+        players: ['Dealer'].concat(opts.players || ['player-1'])
       };
     }
 
@@ -41,19 +33,21 @@ window.addEventListener("ready", (function (doc) {
     }
 
     dealAll() {
-      console.log('new game');
-      let players = this.players, currentPlayer = players[this.currentPlayer], dealer = players[0];
+      //console.log('new game');
+      let players = this.players,
+        currentPlayer = players[this.currentPlayer],
+        dealer = players[0];
+
       setTimeout(() => {
 
         currentPlayer.deal(this);
 
         this.nextPlayer();
 
-      //  if (dealer.cardsCount < 2) this.dealAll();
+        if (dealer.cardCount < 2) this.dealAll();
 
-      }, 300);
+      }, 100);
     }
-
 
     nextPlayer() {
       let current = this.currentPlayer;
@@ -63,9 +57,7 @@ window.addEventListener("ready", (function (doc) {
       this.players[this.currentPlayer].output.title.classList.add('active');
     }
 
-
   }
-
 
   /* - deck object -------------------------------------------------------- */
   class Deck {
@@ -99,19 +91,16 @@ window.addEventListener("ready", (function (doc) {
     }
   }
 
-
-
   /* - player object ------------------------------------------------------ */
   class Player {
     constructor(name) {
       this.name = name;
       this.reset();
-
-      this.output = {};
+      this.output = {}; //set AFTER the initisl setup, since the ui doesnt exist yet
     }
 
     reset() {
-
+      this.cardCount = 0;
       this.score = 0;
       this.hand = [];
       this.hardAce = true;
@@ -128,45 +117,77 @@ window.addEventListener("ready", (function (doc) {
       }
     }
 
-    setOutput() {
-      this.output.title.innerHTML = this.name;
-      this.output.score.innerHTML = '0';
-
-    }
-
     deal(game) {
       let newCard = doc.createElement('div'),
-        table = game.control.table,
-        hand = this.output.hand,
-        goX = table.offsetWidth - hand.offsetLeft - (hand.length * 20),
-        goY = hand.offsetTop;
-       // goX = table.
-      //  goX = table.control.parent
-      //  goX = game.control .output.offsetWidth - frame.offsetLeft - (out.cardsCount * 20),
-    //    goY = frame.offsetTop;
+        frame = this.output.frame,
+        goX = game.control.table.offsetWidth - frame.offsetLeft - (this.cardCount * 20),
+        goY = frame.offsetTop * -1;
+
+      newCard.className = 'card draw blank';
+
+      newCard.style.transform = `translate(${goX}px, ${goY}px)`;
+
+      this.output.hand.appendChild(newCard);
+      this.cardCount++;
+
+      window.getComputedStyle(newCard).transform;
+      newCard.style.transform = '';
+
     }
 
     hit(game) {
-      let newCard = game.deck.drawOne(),
-        result;
-      this.hand.push(newCard);
+      let nth = this.hand.length;
 
-      this.score += cardValue(newCard);
+      if (nth < this.cardCount) {
 
-      result = this.getScore();
+        let newCard = game.deck.drawOne(),
+          result;
 
-      this.output.score.innerHTML = result.scoreStr;
+        this.hand.push(newCard);
+        this.revealCard(nth, newCard);
+        this.score += cardValue(newCard);
 
-      if (result.endTurn) gamePlay.stand(game);
+        result = this.getScore();
 
+        this.output.score.innerHTML = result.scoreStr;
+
+        if (result.endTurn) gamePlay.stand(game);
+      } else {
+        delay(() => this.deal(game), 0)
+        .delay(() => this.hit(game), 150);
+
+      }
+
+    }
+
+    revealCard(nth,card) {
+      let flipped = this.output.hand.getElementsByClassName('card')[nth];
+
+      flipped.className = 'card blank';
+
+      delay(() => flipped.style.transform = 'translateY(-80px) rotateX(-90deg)', 0)
+      .delay(() => cardSet(flipped,card),150)
+      .delay(() => flipped.style.transform = 'rotateX(0)', 150);
+    }
+
+    autoPlay(game) {
+      setTimeout(() => {
+        if (this.score < 17) {
+          this.hit(game);
+          this.autoPlay(game);
+        } else {
+        //  game.endGame();
+        }
+      }, 400);
     }
 
     getScore() {
       let scoreStr = '0',
         endTurn = false,
-        firstScore = this.hand.length < 3,
-        hasAce = this.hand.some((val) => val === 0),
+        firstScore = this.cardCount < 3,
+        hasAce = this.hand.some(val => val[0] === 1),
         thisScore = this.score;
+
 
       if (firstScore && thisScore == 21) {
 
@@ -197,15 +218,12 @@ window.addEventListener("ready", (function (doc) {
         scoreStr = thisScore;
       }
 
-      //this.output.score.innerHTML = scoreStr;
       return {scoreStr,endTurn};
     }
 
   }
 
   /* - ui object ---------------------------------------------------------- */
-
-
 
   class Ui {
     constructor(game) {
@@ -214,7 +232,7 @@ window.addEventListener("ready", (function (doc) {
       //the control input
       let input = this.setInput();
 
-      input.addEventListener('click', (e) => {
+      input.addEventListener('click', e => {
         let ctrl = e.target.dataset.ctrl;
         if (ctrl) gamePlay[ctrl](game);
       }, false);
@@ -222,18 +240,16 @@ window.addEventListener("ready", (function (doc) {
       //the outputs for each player
       let outputs = game.players.map(this.setOutputs);
 
-      outputs.concat([input]).forEach((el) => this.table.appendChild(el));
-
+      outputs.concat([input]).forEach(el => this.table.appendChild(el));
 
     }
 
-
-
-
     setInput() {
       let input = doc.createElement('div');
+
       input.className = 'control-box';
-      ['hit', 'stand', 'restart'].forEach((name) => {
+
+      ['hit', 'stand', 'restart'].forEach(name => {
         var newCtrl = document.createElement('button');
         newCtrl.className = 'ctrl ctrl-' + name;
         newCtrl.innerHTML = name;
@@ -244,30 +260,43 @@ window.addEventListener("ready", (function (doc) {
       return input;
     }
 
-
-
     setOutputs(playerObj, index) {
       let frame = doc.createElement('div');
 
       frame.className = `player-frame player-${index}`;
-      //frame.style.top = (index == 0) ? '20px' : 'calc(100% - 150px)';
-      //out.cardPosY =
-      ['score', 'title', 'hand'].forEach((el) => {
+      playerObj.output.frame = frame;
+
+      ['score', 'title', 'hand'].forEach(el => {
         let newEl = document.createElement('div');
         newEl.className = el;
         frame.appendChild(newEl);
         playerObj.output[el] = newEl;
       });
 
-      playerObj.setOutput();
+      playerObj.output.title.innerHTML = playerObj.name;
+      playerObj.output.score.innerHTML = '0';
 
       return frame;
     }
 
   }
 
+  /* - gameplay functions ------------------------------------------------- */
 
-  /* - score functions ---------------------------------------------------- */
+  const gamePlay = {
+    hit: function (game) {
+      game.players[game.currentPlayer].hit(game);
+    },
+    stand: function (game) {
+      game.nextPlayer();
+      if (game.currentPlayer == 0) game.players[game.currentPlayer].autoPlay(game);
+    },
+    restart: function (game) {
+      game.newGame();
+    }
+  };
+
+  /* - card functions ---------------------------------------------------- */
   function cardValue(cardArr) {
     let out, value = cardArr[0];
     if (value == 1) {
@@ -280,26 +309,23 @@ window.addEventListener("ready", (function (doc) {
     return out;
   }
 
+  function cardSet(card,valueArr) {
+    let suits = ['diamonds', 'hearts', 'spades', 'clubs'],
+      faces = {1 : 'A', 11 : 'J', 12 : 'Q', 13 : 'K'},
+      cardVal = document.createElement('span'),
+      cardDes = document.createElement('div');
 
+    card.className = `card ${suits[valueArr[1]]}`;
 
-  /* - gameplay functions ------------------------------------------------- */
+    cardVal.innerHTML = faces[valueArr[0]] || valueArr[0];
 
-  const gamePlay = {
+    card.appendChild(cardVal);
+    card.appendChild(cardDes);
 
-    //out = {
-    hit: function (game) {
-      game.players[game.currentPlayer].hit(game);
-    },
-    stand: function (game) {
-      game.nextPlayer();
-      console.log(game.currentPlayer);
-    },
-    restart: function (game) {
-      game.newGame();
-    }
-      // };
-      //return out;
-  };
+    return card;
+  }
+
+  /* - timing functions ---------------------------------------------------- */
 
   //http://stackoverflow.com/a/6921279
   function delay(fn, t) {
@@ -340,10 +366,8 @@ window.addEventListener("ready", (function (doc) {
     return self.delay(fn, t);
   }
 
-
-
   return new Game({
-    deckCount: 1,
+    deckCount: 6,
     players: [
       'Adam', 'Beth', 'Chris', 'Denise', 'Edward'
     ]

@@ -242,7 +242,7 @@ function Player(name) {
         } else {
         //  game.endGame();
         }
-      }, 400)
+      }, 400);
   },
 
   };
@@ -369,3 +369,4 @@ game.init({
     'Adam','Beth','Chris','Denise','Edward'
   ]
 });
+
