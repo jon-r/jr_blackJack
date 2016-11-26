@@ -10,12 +10,13 @@ window.addEventListener("ready", (function (doc) {
 
 
       this.deck = new Deck(this.config.deckCount);
-      this.currentPlayer = 1;
-      this.players = this.config.players.map((n) => {
-        return new Player(n);
-      });
+
+      this.players = this.config.players.map((n) => new Player(n));
 
       this.control = new Ui(this);
+    //  this.linkUi();
+
+      this.newGame();
     }
 
     //game settings, with defaults
@@ -31,6 +32,29 @@ window.addEventListener("ready", (function (doc) {
       };
     }
 
+    newGame() {
+      this.currentPlayer = 1;
+      this.deck.setDeck();
+      this.players.map(player => player.reset());
+
+      this.dealAll();
+    }
+
+    dealAll() {
+      console.log('new game');
+      let players = this.players, currentPlayer = players[this.currentPlayer], dealer = players[0];
+      setTimeout(() => {
+
+        currentPlayer.deal(this);
+
+        this.nextPlayer();
+
+      //  if (dealer.cardsCount < 2) this.dealAll();
+
+      }, 300);
+    }
+
+
     nextPlayer() {
       let current = this.currentPlayer;
       this.players[current].output.title.classList.remove('active');
@@ -39,29 +63,39 @@ window.addEventListener("ready", (function (doc) {
       this.players[this.currentPlayer].output.title.classList.add('active');
     }
 
+
   }
+
+
   /* - deck object -------------------------------------------------------- */
   class Deck {
     constructor(decksCount) {
-      this.cards = [];
+      this.deckCount = decksCount;
+      this.setDeck();
+    }
+
+    setDeck() {
       let i, j, k;
 
+      this.cards = [];
+
       //decks
-      for (i = 0; i < decksCount; i++) {
+      for (i = 0; i < this.deckCount; i++) {
         //suits
         for (j = 0; j < 4; j++) {
           //values
           for (k = 1; k < 14; k++) {
-            this.cards.push([k,j]);
+            this.cards.push([k, j]);
           }
         }
       }
+
     }
 
     //takes a random card out of the deck
     drawOne() {
       let rng = Math.floor(Math.random() * this.cards.length);
-      return this.cards.splice(rng,1)[0];
+      return this.cards.splice(rng, 1)[0];
     }
   }
 
@@ -71,29 +105,65 @@ window.addEventListener("ready", (function (doc) {
   class Player {
     constructor(name) {
       this.name = name;
+      this.reset();
+
+      this.output = {};
+    }
+
+    reset() {
+
       this.score = 0;
       this.hand = [];
-      this.output = {};
       this.hardAce = true;
+
+      let ui = this.output;
+
+      if (ui) {
+        ui.score.innerHTML = '0';
+        while (ui.hand.firstChild) {
+          ui.hand.removeChild(
+            ui.hand.firstChild
+          );
+        }
+      }
     }
 
     setOutput() {
       this.output.title.innerHTML = this.name;
       this.output.score.innerHTML = '0';
+
     }
 
-    hit(deck) {
-      let newCard = deck.drawOne();
+    deal(game) {
+      let newCard = doc.createElement('div'),
+        table = game.control.table,
+        hand = this.output.hand,
+        goX = table.offsetWidth - hand.offsetLeft - (hand.length * 20),
+        goY = hand.offsetTop;
+       // goX = table.
+      //  goX = table.control.parent
+      //  goX = game.control .output.offsetWidth - frame.offsetLeft - (out.cardsCount * 20),
+    //    goY = frame.offsetTop;
+    }
+
+    hit(game) {
+      let newCard = game.deck.drawOne(),
+        result;
       this.hand.push(newCard);
 
       this.score += cardValue(newCard);
-      this.output.score.innerHTML = this.getScore();
 
-      this.getScore();
+      result = this.getScore();
+
+      this.output.score.innerHTML = result.scoreStr;
+
+      if (result.endTurn) gamePlay.stand(game);
+
     }
 
     getScore() {
       let scoreStr = '0',
+        endTurn = false,
         firstScore = this.hand.length < 3,
         hasAce = this.hand.some((val) => val === 0),
         thisScore = this.score;
@@ -101,7 +171,7 @@ window.addEventListener("ready", (function (doc) {
       if (firstScore && thisScore == 21) {
 
         scoreStr = `BlackJack ${thisScore}`;
-        //nextPlayer
+        endTurn = true;
 
       } else if (firstScore && hasAce) {
 
@@ -111,7 +181,7 @@ window.addEventListener("ready", (function (doc) {
       } else if (thisScore == 21) {
 
         scoreStr = thisScore;
-        //nextPlayer
+        endTurn = true;
 
       } else if (thisScore > 21 && !this.hardAce) {
         this.score = thisScore - 10;
@@ -121,12 +191,14 @@ window.addEventListener("ready", (function (doc) {
 
       } else if (thisScore > 21) {
         scoreStr = `Bust ${thisScore}`;
-        //nextPlayer
+        endTurn = true;
+
       } else {
         scoreStr = thisScore;
       }
 
-      this.output.score.innerHTML = scoreStr;
+      //this.output.score.innerHTML = scoreStr;
+      return {scoreStr,endTurn};
     }
 
   }
@@ -140,33 +212,39 @@ window.addEventListener("ready", (function (doc) {
       this.table = doc.querySelector(game.config.tableElement);
 
       //the control input
-      let input = this.setInput(game);
+      let input = this.setInput();
+
+      input.addEventListener('click', (e) => {
+        let ctrl = e.target.dataset.ctrl;
+        if (ctrl) gamePlay[ctrl](game);
+      }, false);
 
       //the outputs for each player
       let outputs = game.players.map(this.setOutputs);
 
-      outputs.concat([input]).forEach((el) => {this.table.appendChild(el);});
+      outputs.concat([input]).forEach((el) => this.table.appendChild(el));
 
-      this.gamePlay = this.setGamePlay();
 
     }
 
-    setInput(game) {
+
+
+
+    setInput() {
       let input = doc.createElement('div');
       input.className = 'control-box';
       ['hit', 'stand', 'restart'].forEach((name) => {
         var newCtrl = document.createElement('button');
         newCtrl.className = 'ctrl ctrl-' + name;
         newCtrl.innerHTML = name;
-        newCtrl.addEventListener('click', () => {
-          this.gamePlay[name](game);
-        });
+        newCtrl.dataset.ctrl = name;
         input.appendChild(newCtrl);
-        //control[name] = newCtrl;
       });
 
       return input;
     }
+
+
 
     setOutputs(playerObj, index) {
       let frame = doc.createElement('div');
@@ -184,22 +262,6 @@ window.addEventListener("ready", (function (doc) {
       playerObj.setOutput();
 
       return frame;
-    }
-
-
-    setGamePlay() {
-      return {
-        hit(game) {
-          game.players[game.currentPlayer].hit(game.deck);
-        },
-        stand(game) {
-          game.nextPlayer();
-          console.log(game.currentPlayer);
-        },
-        restart() {
-
-        }
-      };
     }
 
   }
@@ -221,6 +283,23 @@ window.addEventListener("ready", (function (doc) {
 
 
   /* - gameplay functions ------------------------------------------------- */
+
+  const gamePlay = {
+
+    //out = {
+    hit: function (game) {
+      game.players[game.currentPlayer].hit(game);
+    },
+    stand: function (game) {
+      game.nextPlayer();
+      console.log(game.currentPlayer);
+    },
+    restart: function (game) {
+      game.newGame();
+    }
+      // };
+      //return out;
+  };
 
   //http://stackoverflow.com/a/6921279
   function delay(fn, t) {
@@ -264,8 +343,9 @@ window.addEventListener("ready", (function (doc) {
 
 
   return new Game({
-    deckCount:1,
+    deckCount: 1,
     players: [
-      'Adam','Beth','Chris','Denise','Edward'
-    ]});
+      'Adam', 'Beth', 'Chris', 'Denise', 'Edward'
+    ]
+  });
 }(document)));
