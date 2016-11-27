@@ -22,9 +22,10 @@ html {
 
 .control-box {
   position: absolute;
-  top: 100px;
-  left: -120px;
+  top: 100%;
+/*  left: -120px;*/
 }
+/*
 .ctrl {
   border: solid 2px;
   border-radius: 10px;
@@ -36,6 +37,7 @@ html {
   margin: 3px;
   background: #dedede;
 }
+*/
 
 .title.active {
   color: white;
@@ -82,24 +84,25 @@ html {
   transition-duration: 400ms;
 }
 
-.card div {
+.card:not(.blank)::after {
+  content: "";
   position: absolute;
   right: -10px;
   bottom:-5px;
   height: 50px;
   width: 50px;
   background: url(card.min.svg) 0/200%;
-
 }
-.card.hearts div {
+
+.card.hearts::after {
   background-position: top left;
 }
-.card.diamonds div {
+.card.diamonds::after {
   background-position: bottom left;
 }
-.card.clubs div {
+.card.clubs::after {
   background-position: top right;
 }
-.card.spades div {
+.card.spades::after {
   background-position: bottom right;
 }

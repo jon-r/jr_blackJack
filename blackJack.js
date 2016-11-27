@@ -5,13 +5,14 @@ window.addEventListener("ready", (function (doc) {
   class Game {
 
     constructor(options) {
+
       this.config = this.setConfig(options);
       this.currentPlayer = 1;
       this.deck = new Deck(this.config.deckCount);
       this.players = this.config.players.map((n) => new Player(n));
       this.control = new Ui(this);
 
-      this.newGame();
+      this.dealAll();
     }
 
     //game settings, with defaults
@@ -46,7 +47,7 @@ window.addEventListener("ready", (function (doc) {
 
         if (dealer.cardCount < 2) this.dealAll();
 
-      }, 100);
+      }, 300);
     }
 
     nextPlayer() {
@@ -64,25 +65,21 @@ window.addEventListener("ready", (function (doc) {
     constructor(decksCount) {
       this.deckCount = decksCount;
       this.setDeck();
-      this.cards = [];
     }
 
     setDeck() {
-      let i, j, k;
-
       this.cards = [];
 
       //decks
-      for (i = 0; i < this.deckCount; i++) {
+      for (let i = 0; i < this.deckCount; i++) {
         //suits
-        for (j = 0; j < 4; j++) {
+        for (let j = 0; j < 4; j++) {
           //values
-          for (k = 1; k < 14; k++) {
+          for (let k = 1; k < 14; k++) {
             this.cards.push([k, j]);
           }
         }
       }
-
     }
 
     //takes a random card out of the deck
@@ -111,7 +108,7 @@ window.addEventListener("ready", (function (doc) {
 
       let ui = this.output;
 
-      ui.score.innerHTML = '0';
+      ui.score.textContent = '0';
       while (ui.hand.firstChild) {
         ui.hand.removeChild(
           ui.hand.firstChild
@@ -120,14 +117,15 @@ window.addEventListener("ready", (function (doc) {
     }
 
     deal(game) {
-      let newCard = doc.createElement('div'),
-        frame = this.output.frame,
+      let frame = this.output.frame,
         goX = game.control.table.offsetWidth - frame.offsetLeft - (this.cardCount * 20),
-        goY = frame.offsetTop * -1;
-
-      newCard.className = 'card draw blank';
-
-      newCard.style.transform = `translate(${goX}px, ${goY}px)`;
+        goY = frame.offsetTop * -1,
+        newCard = newEl('div', {
+          'class': 'card draw blank',
+          'style': {
+            transform:`translate(${goX}px, ${goY}px)`
+          }
+        });
 
       this.output.hand.appendChild(newCard);
       this.cardCount++;
@@ -151,12 +149,12 @@ window.addEventListener("ready", (function (doc) {
 
         result = this.getScore();
 
-        this.output.score.innerHTML = result.scoreStr;
+        this.output.score.textContent = result.scoreStr;
 
         if (result.endTurn) gamePlay.stand(game);
       } else {
         delay(() => this.deal(game), 0)
-        .delay(() => this.hit(game), 150);
+        .delay(() => this.hit(game), 200);
 
       }
 
@@ -180,7 +178,7 @@ window.addEventListener("ready", (function (doc) {
         } else {
         //  game.endGame();
         }
-      }, 400);
+      }, 500);
     }
 
     getScore() {
@@ -207,7 +205,7 @@ window.addEventListener("ready", (function (doc) {
         endTurn = true;
 
       } else if (thisScore > 21 && !this.hardAce) {
-        this.score = thisScore - 10;
+        thisScore = this.score = thisScore - 10;
 
         this.hardAce = true;
         scoreStr = thisScore;
@@ -231,10 +229,10 @@ window.addEventListener("ready", (function (doc) {
     constructor(game) {
       this.table = doc.querySelector(game.config.tableElement);
 
-      //the control input
-      let input = this.setInput();
+      //the in game control panel
+      let panel = this.setPanel();
 
-      input.addEventListener('click', e => {
+      panel.addEventListener('click', e => {
         let ctrl = e.target.dataset.ctrl;
         if (ctrl) gamePlay[ctrl](game);
       }, false);
@@ -242,45 +240,47 @@ window.addEventListener("ready", (function (doc) {
       //the outputs for each player
       let outputs = game.players.map(this.setOutputs);
 
-      outputs.concat([input]).forEach(el => this.table.appendChild(el));
+      outputs.concat([panel]).forEach(el => this.table.appendChild(el));
 
     }
 
-    setInput() {
-      let input = doc.createElement('div');
-
-      input.className = 'control-box';
+    setPanel() {
+      let panel = newEl('div', {'class' : 'control-box' });
 
       ['hit', 'stand', 'restart'].forEach(name => {
-        var newCtrl = document.createElement('button');
-        newCtrl.className = 'ctrl ctrl-' + name;
-        newCtrl.innerHTML = name;
-        newCtrl.dataset.ctrl = name;
-        input.appendChild(newCtrl);
+        const newCtrl = newEl('button', {
+          'class' : `ctrl ctrl-${name}`,
+          'text' : name,
+          'data-ctrl' : name
+        });
+        panel.appendChild(newCtrl);
       });
 
-      return input;
+      return panel;
     }
 
     setOutputs(playerObj, index) {
-      let frame = doc.createElement('div');
+     // let frame = doc.createElement('div');
+      let frame = newEl('div', { 'class' : `player-frame player-${index}` }),
+        vals = new Map([
+          ['score', '0'],
+          ['title', playerObj.name],
+          ['hand', '']
+        ]);
 
-      frame.className = `player-frame player-${index}`;
       playerObj.output.frame = frame;
 
-      ['score', 'title', 'hand'].forEach(el => {
-        let newEl = document.createElement('div');
-        newEl.className = el;
-        frame.appendChild(newEl);
-        playerObj.output[el] = newEl;
-      });
-
-      playerObj.output.title.innerHTML = playerObj.name;
-      playerObj.output.score.innerHTML = '0';
+      for (let [key,val] of vals) {
+        let thisEl = newEl('div', {
+          'class' : key,
+          'text' : val
+        });
+        frame.appendChild(thisEl);
+        playerObj.output[key] = thisEl;
+      }
 
       return frame;
     }
-
   }
 
   /* - gameplay functions ------------------------------------------------- */
@@ -295,39 +295,47 @@ window.addEventListener("ready", (function (doc) {
     },
     restart: function (game) {
       game.newGame();
-    }
+    },
   };
 
   /* - card functions ---------------------------------------------------- */
   function cardValue(cardArr) {
-    let out, value = cardArr[0];
-    if (value == 1) {
-      out = 11;
-    } else if (value > 10) {
-      out = 10;
-    } else {
-      out = value;
-    }
-    return out;
+    let value = cardArr[0];
+
+    return (1 == value) ? 11 : (10 < value) ? 10 : value;
+
   }
 
   function cardSet(card,valueArr) {
     let suits = ['diamonds', 'hearts', 'spades', 'clubs'],
-      faces = {1 : 'A', 11 : 'J', 12 : 'Q', 13 : 'K'},
-      cardVal = document.createElement('span'),
-      cardDes = document.createElement('div');
+      faces = {1 : 'A', 11 : 'J', 12 : 'Q', 13 : 'K'};
 
     card.className = `card ${suits[valueArr[1]]}`;
 
-    cardVal.innerHTML = faces[valueArr[0]] || valueArr[0];
-
-    card.appendChild(cardVal);
-    card.appendChild(cardDes);
-
+    card.appendChild(newEl('span', {'text': faces[valueArr[0]] || valueArr[0] }));
     return card;
   }
 
-  /* - timing functions ---------------------------------------------------- */
+  /* - misc functions ---------------------------------------------------- */
+
+  //http://stackoverflow.com/a/12274886
+  function newEl(el,attrs) {
+    let element = doc.createElement(el);
+
+    for (var idx in attrs) {
+      if ((idx === 'styles' || idx === 'style') && typeof attrs[idx] === 'object') {
+        for (var prop in attrs[idx]) {
+          element.style[prop] = attrs[idx][prop];
+        }
+      } else if (idx === 'text') {
+        element.textContent = attrs[idx];
+      } else {
+        element.setAttribute(idx, attrs[idx]);
+      }
+    }
+
+    return element;
+  }
 
   //http://stackoverflow.com/a/6921279
   function delay(fn, t) {
