@@ -10,7 +10,9 @@ window.addEventListener("ready", (function (doc) {
       this.currentPlayer = 1;
       this.deck = new Deck(this.config.deckCount);
       this.players = this.config.players.map((n) => new Player(n));
-      this.control = new Ui(this);
+      //this.gamePlay = this.gamePlay();
+      this.control = this.setUi();
+
 
       this.dealAll();
     }
@@ -25,13 +27,90 @@ window.addEventListener("ready", (function (doc) {
       };
     }
 
-    newGame() {
-      this.currentPlayer = 1;
-      this.deck.setDeck();
-      this.players.map(player => player.reset());
+    setUi() {
+      let table = doc.querySelector(this.config.tableElement);
 
-      this.dealAll();
+      //the in game control panel
+      let panel = this.setPanel();
+
+      panel.addEventListener('click', (e) => {
+        let ctrl = e.target.dataset.ctrl;
+        if (ctrl) this.gamePlay[ctrl](this);
+      }, false);
+
+      //the outputs for each player
+      let outputs = this.players.map(this.setOutputs);
+
+      outputs.concat([panel]).forEach(el => table.appendChild(el));
+
+      return table;
     }
+
+    setPanel() {
+      let panel = newEl('div', {'class' : 'control-box' });
+
+      ['hit', 'stand', 'restart'].forEach(name => {
+        const newCtrl = newEl('button', {
+          'class' : `ctrl ctrl-${name}`,
+          'text' : name,
+          'data-ctrl' : name
+        });
+        panel.appendChild(newCtrl);
+      });
+
+      return panel;
+    }
+
+    setOutputs(playerObj, index) {
+     // let frame = doc.createElement('div');
+      let frame = newEl('div', { 'class' : `player-frame player-${index}` }),
+        vals = new Map([
+          ['score', '0'],
+          ['title', playerObj.name],
+          ['hand', '']
+        ]);
+
+      playerObj.output.frame = frame;
+
+      for (let [key,val] of vals) {
+        let thisEl = newEl('div', {
+          'class' : key,
+          'text' : val
+        });
+        frame.appendChild(thisEl);
+        playerObj.output[key] = thisEl;
+      }
+
+      return frame;
+    }
+
+    get gamePlay() {
+
+      let players = this.players;
+
+
+
+      let out = {
+
+        hit: () => {
+          players[this.currentPlayer].hit(this);
+        },
+
+        stand: () => {
+          this.nextPlayer();
+          if (this.currentPlayer == 0) players[this.currentPlayer].autoPlay(this);
+        },
+        restart: () => {
+          this.currentPlayer = 1;
+          this.deck.setDeck();
+          players.map(player => player.reset());
+          this.dealAll();
+        }
+      };
+
+      return out;
+    }
+
 
     dealAll() {
       //console.log('new game');
@@ -39,9 +118,9 @@ window.addEventListener("ready", (function (doc) {
         currentPlayer = players[this.currentPlayer],
         dealer = players[0];
 
-      setTimeout(() => {
+      currentPlayer.deal(this);
 
-        currentPlayer.deal(this);
+      setTimeout(() => {
 
         this.nextPlayer();
 
@@ -51,11 +130,13 @@ window.addEventListener("ready", (function (doc) {
     }
 
     nextPlayer() {
-      let current = this.currentPlayer;
-      this.players[current].output.title.classList.remove('active');
+      let current = this.currentPlayer,
+        players = this.players;
+      players[current].output.title.classList.remove('active');
 
-      this.currentPlayer = (current == this.players.length - 1) ? 0 : current + 1;
-      this.players[this.currentPlayer].output.title.classList.add('active');
+      this.currentPlayer = (current + 1) % (players.length);
+
+      players[this.currentPlayer].output.title.classList.add('active');
     }
 
   }
@@ -71,15 +152,15 @@ window.addEventListener("ready", (function (doc) {
       this.cards = [];
 
       //decks
-      for (let i = 0; i < this.deckCount; i++) {
+      for (let i = 0; i < this.deckCount; i++)
         //suits
-        for (let j = 0; j < 4; j++) {
+        for (let j = 0; j < 4; j++)
           //values
-          for (let k = 1; k < 14; k++) {
+          for (let k = 1; k < 14; k++)
             this.cards.push([k, j]);
-          }
-        }
-      }
+         // }
+        //}
+    //  }
     }
 
     //takes a random card out of the deck
@@ -118,7 +199,7 @@ window.addEventListener("ready", (function (doc) {
 
     deal(game) {
       let frame = this.output.frame,
-        goX = game.control.table.offsetWidth - frame.offsetLeft - (this.cardCount * 20),
+        goX = game.control.offsetWidth - frame.offsetLeft - (this.cardCount * 20),
         goY = frame.offsetTop * -1,
         newCard = newEl('div', {
           'class': 'card draw blank',
@@ -151,7 +232,7 @@ window.addEventListener("ready", (function (doc) {
 
         this.output.score.textContent = result.scoreStr;
 
-        if (result.endTurn) gamePlay.stand(game);
+        if (result.endTurn) game.gamePlay.stand(game);
       } else {
         delay(() => this.deal(game), 0)
         .delay(() => this.hit(game), 200);
@@ -225,85 +306,21 @@ window.addEventListener("ready", (function (doc) {
 
   /* - ui object ---------------------------------------------------------- */
 
-  class Ui {
-    constructor(game) {
-      this.table = doc.querySelector(game.config.tableElement);
 
-      //the in game control panel
-      let panel = this.setPanel();
-
-      panel.addEventListener('click', e => {
-        let ctrl = e.target.dataset.ctrl;
-        if (ctrl) gamePlay[ctrl](game);
-      }, false);
-
-      //the outputs for each player
-      let outputs = game.players.map(this.setOutputs);
-
-      outputs.concat([panel]).forEach(el => this.table.appendChild(el));
-
-    }
-
-    setPanel() {
-      let panel = newEl('div', {'class' : 'control-box' });
-
-      ['hit', 'stand', 'restart'].forEach(name => {
-        const newCtrl = newEl('button', {
-          'class' : `ctrl ctrl-${name}`,
-          'text' : name,
-          'data-ctrl' : name
-        });
-        panel.appendChild(newCtrl);
-      });
-
-      return panel;
-    }
-
-    setOutputs(playerObj, index) {
-     // let frame = doc.createElement('div');
-      let frame = newEl('div', { 'class' : `player-frame player-${index}` }),
-        vals = new Map([
-          ['score', '0'],
-          ['title', playerObj.name],
-          ['hand', '']
-        ]);
-
-      playerObj.output.frame = frame;
-
-      for (let [key,val] of vals) {
-        let thisEl = newEl('div', {
-          'class' : key,
-          'text' : val
-        });
-        frame.appendChild(thisEl);
-        playerObj.output[key] = thisEl;
-      }
-
-      return frame;
-    }
-  }
 
   /* - gameplay functions ------------------------------------------------- */
 
-  const gamePlay = {
-    hit: function (game) {
-      game.players[game.currentPlayer].hit(game);
-    },
-    stand: function (game) {
-      game.nextPlayer();
-      if (game.currentPlayer == 0) game.players[game.currentPlayer].autoPlay(game);
-    },
-    restart: function (game) {
-      game.newGame();
-    },
-  };
+//  const gamePlay = {
+//
+//  };
 
   /* - card functions ---------------------------------------------------- */
   function cardValue(cardArr) {
     let value = cardArr[0];
 
-    return (1 == value) ? 11 : (10 < value) ? 10 : value;
-
+    return (1 == value) ? 11
+      : (10 < value) ? 10
+      : value;
   }
 
   function cardSet(card,valueArr) {
@@ -379,7 +396,7 @@ window.addEventListener("ready", (function (doc) {
   return new Game({
     deckCount: 6,
     players: [
-      'Adam', 'Beth', 'Chris', 'Denise', 'Edward'
+      'Aaron', 'Beth', 'Chris', 'Denise', 'Ethan'
     ]
   });
 }(document)));
