@@ -4,8 +4,7 @@ window.addEventListener("ready", (function (doc) {
   class BlackJack {
     constructor(options) {
       this.config = this.setConfig(options);
-
-
+      this.menu = this.setMenu();
     }
         //game settings, with defaults
     setConfig(opts) {
@@ -18,57 +17,63 @@ window.addEventListener("ready", (function (doc) {
     }
 
     setMenu() {
-      let form = this.config.tableElement.appendChild(newEl('form', {
-        'class' : 'intro-form'
-      }));
+      let table = doc.querySelector(this.config.tableElement),
+        form = table.appendChild(newEl('form', {
+          'class' : 'intro-form'
+        }));
+
 
       let rows = new Map([
         ['decks', ['Deck Count', 'number']],
         ['p-1', ['Player 1', 'text']],
+        ['p-2', ['Player 2', 'text']],
+        ['p-3', ['Player 3', 'text']],
+        ['p-4', ['Player 4', 'text']],
+        ['p-5', ['Player 5', 'text']],
+        ['p-6', ['Player 6', 'text']],
         ['submit', ['Start', 'submit']]
       ]);
 
       for (let [name,arr] of rows) {
-        let newRow = form.appendChild(newEl('p', {
-          class : `form-row row-${name}`
-        }));
+        let row = newEl('p', {
+            class : `form-row row-${name}`
+          }),
+          newLabel = newEl('label', {
+            'for' : `input-${name}`,
+            'text': arr[0]
+          }),
+          newInput = newEl('input', {
+            'name'  : name,
+            'type'  : arr[1],
+            'id'    : `input-${name}`
+          });
 
-        let newLabel = newEl('label', {
-          'for' : `input-${name}`,
-
-        })
-
-
-          'input', {
-          'name' : name,
-          'type' : arr[1];
-        }))
+        [newLabel,newInput].forEach(el => row.appendChild(el));
+        form.appendChild(row);
       }
 
+      form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        let inputs = e.target.elements,
+          decks = Math.min(inputs[0].value, 1),
+          nameArr = [];
 
-      /*
-     // let frame = doc.createElement('div');
-      let frame = newEl('div', { 'class' : `player-frame player-${index}` }),
-        vals = new Map([
-          ['score', '0'],
-          ['title', playerObj.name],
-          ['hand', '']
-        ]);
 
-      playerObj.output.frame = frame;
 
-      for (let [key,val] of vals) {
-        let thisEl = newEl('div', {
-          'class' : key,
-          'text' : val
+        for (let i = 1, n = inputs.length - 1; i < n; i++) {
+          let val = inputs[i].value;
+          if (val !== "") nameArr.push(val);
+        }
+
+        return new Game({
+          tableElement: this.config.tableElement,
+          deckCount: decks,
+          players: nameArr
         });
-        frame.appendChild(thisEl);
-        playerObj.output[key] = thisEl;
-      }
+      });
 
-      return frame;
-      */
     }
+
   }
 
   /* - game object -------------------------------------------------------- */
@@ -463,7 +468,7 @@ window.addEventListener("ready", (function (doc) {
     return self.delay(fn, t);
   }
 
-  return new Game({
+  return new BlackJack({
     deckCount: 6,
     players: [
       'Aaron', 'Beth', 'Chris', 'Denise', 'Ethan'
