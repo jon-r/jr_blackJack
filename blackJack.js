@@ -1,6 +1,76 @@
 window.addEventListener("ready", (function (doc) {
   "use strict";
 
+  class BlackJack {
+    constructor(options) {
+      this.config = this.setConfig(options);
+
+
+    }
+        //game settings, with defaults
+    setConfig(opts) {
+      opts = opts || {};
+      return {
+        tableElement: opts.tableElement || '#jr_cardTable',
+        deckCount: opts.deckCount || 6,
+        players: ['Dealer'].concat(opts.players || ['player-1'])
+      };
+    }
+
+    setMenu() {
+      let form = this.config.tableElement.appendChild(newEl('form', {
+        'class' : 'intro-form'
+      }));
+
+      let rows = new Map([
+        ['decks', ['Deck Count', 'number']],
+        ['p-1', ['Player 1', 'text']],
+        ['submit', ['Start', 'submit']]
+      ]);
+
+      for (let [name,arr] of rows) {
+        let newRow = form.appendChild(newEl('p', {
+          class : `form-row row-${name}`
+        }));
+
+        let newLabel = newEl('label', {
+          'for' : `input-${name}`,
+
+        })
+
+
+          'input', {
+          'name' : name,
+          'type' : arr[1];
+        }))
+      }
+
+
+      /*
+     // let frame = doc.createElement('div');
+      let frame = newEl('div', { 'class' : `player-frame player-${index}` }),
+        vals = new Map([
+          ['score', '0'],
+          ['title', playerObj.name],
+          ['hand', '']
+        ]);
+
+      playerObj.output.frame = frame;
+
+      for (let [key,val] of vals) {
+        let thisEl = newEl('div', {
+          'class' : key,
+          'text' : val
+        });
+        frame.appendChild(thisEl);
+        playerObj.output[key] = thisEl;
+      }
+
+      return frame;
+      */
+    }
+  }
+
   /* - game object -------------------------------------------------------- */
   class Game {
 
