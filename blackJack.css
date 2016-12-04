@@ -8,7 +8,7 @@ html {
 }
 
 .table {
-  background: green;
+  background: #549a54;
   padding: 20px;
   border:solid 4px brown;
   width:100%;
@@ -25,6 +25,33 @@ html {
   top: 100%;
 /*  left: -120px;*/
 }
+
+.difference {
+  opacity: 0;
+}
+
+.difference.show-pos,
+.difference.show-neg {
+  opacity: 1;
+  animation: fade 2000ms ease-out 2000ms forwards;
+}
+
+@keyframes fade {
+  to { opacity: 0 }
+}
+
+.show-pos {
+  color: green;
+}
+.show-neg {
+  color: red;
+}
+.show-pos::before {
+  content:"+";
+}
+
+
+
 /*
 .ctrl {
   border: solid 2px;
@@ -54,7 +81,7 @@ html {
 
 .player-frame {
   position: absolute;
-  top:240px;
+  top:220px;
 }
 
 .player-0.player-frame {top: 10px}

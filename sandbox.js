@@ -1,6 +1,7 @@
 window.addEventListener("ready", (function (doc) {
   "use strict";
 
+  /* - core gameplay ---------------------------------------------------- */
   class BlackJack {
     constructor(board) {
       let query = board || '#jr_cardTable';
@@ -16,6 +17,9 @@ window.addEventListener("ready", (function (doc) {
     }
 
     newGame(opts) {
+      let table = this.table;
+      while (table.firstChild) table.removeChild(table.firstChild);
+
       opts = opts || {};
 
       this.options = {
@@ -28,17 +32,18 @@ window.addEventListener("ready", (function (doc) {
       this.dealAll();
     }
 
-    openMenu() {
-      this.menu.toggleForm();
-    }
-
     restart() {
       this.current = 1;
-      this.players.map(player => player.restart());
+      this.players.map((player,index) => {
+        player.restart();
+        if (player.money == 0) {
+          if (index == this.current) this.current++;
+          player.skip = true;
+          this.ui.knockout(index);
+        }
+      });
       this.ui.restart();
       this.dealAll();
-
-
     }
 
     dealAll() {
@@ -47,6 +52,7 @@ window.addEventListener("ready", (function (doc) {
       this.ui.deal(this.current);
 
       this.ui.panel.getElementsByClassName('ctrl-hit')[0].disabled = true;
+      this.ui.panel.getElementsByClassName('ctrl-stand')[0].disabled = true;
       this.ui.panel.getElementsByClassName('ctrl-bid')[0].disabled = false;
 
       setTimeout(() => {
@@ -59,11 +65,15 @@ window.addEventListener("ready", (function (doc) {
       let playerCount = this.players.length;
 
       for (let i = 1; i < playerCount; i++) { //skipping dealer
-        this.players[i].setBid(this.ui.getBid(i));
+        let player = this.players[i];
+        if (!player.skip) player.bid = this.ui.getBid(i);
       }
 
       this.ui.panel.getElementsByClassName('ctrl-hit')[0].disabled = false;
+      this.ui.panel.getElementsByClassName('ctrl-stand')[0].disabled = false;
       this.ui.panel.getElementsByClassName('ctrl-bid')[0].disabled = true;
+
+      this.firstDeal();
     }
 
     endRound() {
@@ -72,11 +82,16 @@ window.addEventListener("ready", (function (doc) {
         playerCount = this.players.length;
 
       for (let i = 1; i < playerCount; i++) { //skipping dealer
-
-        this.ui.setMoney(i, this.players[i].getMoney(dealer.score, dealer.cardCount));
+        let player = this.players[i];
+        if (!player.skip)
+          this.ui.setMoney(i, player.getMoney(dealer.score, dealer.cardCount));
       }
 
-
+      if (playerCount == 1) {
+        this.endAll();
+      } else {
+        setTimeout(() => this.restart(), 5000);
+      }
     }
 
     endAll() {
@@ -95,15 +110,37 @@ window.addEventListener("ready", (function (doc) {
     playerStand() {
       this.nextPlayer();
 
-      if (this.current == 0) this.autoPlay();
+      if (this.current == 0) {
+        this.ui.panel.getElementsByClassName('ctrl-hit')[0].disabled = true;
+        this.ui.panel.getElementsByClassName('ctrl-stand')[0].disabled = true;
+        this.autoPlay();
+      } else {
+        this.firstDeal();
+      }
+    }
+
+    firstDeal() {
+      delay(() => this.playerHit(), 500)
+        .delay(() => this.playerHit(), 500);
+    }
+
+    openMenu() {
+      this.menu.toggleForm();
     }
 
     nextPlayer() {
       let current = this.current,
         players = this.players;
 
+
       this.current = (current + 1) % (players.length);
-      this.ui.setActive(this.current);
+
+      if (players[this.current].skip) {
+        this.nextPlayer();
+      } else {
+        this.ui.setActive(this.current);
+      }
+
     }
 
     autoPlay() {
@@ -139,9 +176,9 @@ window.addEventListener("ready", (function (doc) {
     }
 
     build(table) {
-      let form = table.appendChild(newEl('form', {
+      let form = table.parentElement.insertBefore(newEl('form', {
           class : 'intro-form'
-        })),
+        }), table),
         rows = new Map([
           ['decks', ['Deck Count', 'number', 6]],
           ['p-1', ['Player 1', 'text', 'Aaron']],
@@ -149,8 +186,10 @@ window.addEventListener("ready", (function (doc) {
           ['p-3', ['Player 3', 'text', 'Chris']],
           ['p-4', ['Player 4', 'text', 'Denise']],
           ['p-5', ['Player 5', 'text', 'Ethan']],
-          ['submit', ['Start', 'submit', 'Go']]
+          ['submit', ['New Game', 'submit', 'Go']]
         ]);
+
+
 
       for (let [name,arr] of rows) {
         let newLabel = newEl('label', {
@@ -162,12 +201,23 @@ window.addEventListener("ready", (function (doc) {
             class : `form-input input-${name} input-${arr[1]}`,
             name  : name,
             type  : arr[1],
+            placeholder : arr[0],
             id    : `input-${name}`,
             value : arr[2] || '',
             min : arr[1] == 'number' ? 1 : ''
           });
-
         [newLabel,newInput].forEach(el => form.appendChild(el));
+        if (arr[1] == 'text') {
+          let btn = newEl('button', {
+            class: 'clear-player',
+            text: 'X'
+          });
+          btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.target.nextElementSibling.value = '';
+          });
+          form.insertBefore(btn,newInput);
+        }
       }
 
       form.addEventListener('submit', (e) => {
@@ -241,6 +291,7 @@ window.addEventListener("ready", (function (doc) {
       this.score = 0;
       this.hand = [];
       this.hardAce = true;
+      this.skip = false;
     }
 
     restart() {
@@ -263,14 +314,14 @@ window.addEventListener("ready", (function (doc) {
       let scoreStr = '0',
         endTurn = false,
         firstScore = this.cardCount < 3,
-        hasAce = this.hand.some(val => val[0] === 1),
+        softAce = (this.hand[0] === 1 || this.hand[1] === 1),
         thisScore = this.score;
 
       if (firstScore && thisScore == 21) {
         scoreStr = `BlackJack ${thisScore}`;
         endTurn = true;
 
-      } else if (firstScore && hasAce) {
+      } else if (softAce) {
         scoreStr = `Soft ${thisScore}`;
         this.hardAce = false;
 
@@ -302,7 +353,7 @@ window.addEventListener("ready", (function (doc) {
     }
 
     setBid(bidNum) {
-      this.money = this.money - bidNum;
+      //this.money = this.money - bidNum;
       this.bid = bidNum;
     }
 
@@ -315,18 +366,16 @@ window.addEventListener("ready", (function (doc) {
 
       if (playerScore < 22) {
         if (blackJack && !dealerBlackJack) {
-          odds = 2.5;
+          odds = 1.5;
         } else if (playerScore > dealerScore || dealerScore > 21) {
-          odds = 2;
-        } else if (blackJack && dealerBlackJack || playerScore == dealerScore) {
           odds = 1;
-        } else {
+        } else if (blackJack && dealerBlackJack || playerScore == dealerScore) {
           odds = 0;
+        } else {
+          odds = -1;
         }
-      } else if (playerScore > 21 && dealerScore > 21) {
-        odds = 1;
       } else {
-        odds = 0;
+        odds = -1;
       }
 
       wins = this.bid * odds;
@@ -375,24 +424,28 @@ window.addEventListener("ready", (function (doc) {
           childEls: {},
           hand: [],
           goX: 0,
-          goY: 0
+          goY: 0,
+          skip: false,
         },
         vals = new Map([
-          ['score', '0'],
-          ['title', playerObj.name],
-          ['money', playerObj.money],
-          ['hand', '']
+          ['score', ['0', true]],
+          ['title', [playerObj.name, true]],
+          ['money', [playerObj.money]],
+          ['difference', ['0']],
+          ['hand', ['', true]]
         ]);
 
 
 
-      for (let [key,val] of vals) {
-        let thisEl = newEl('div', {
-          'class' : key,
-          'text' : val
-        });
-        parentEl.appendChild(thisEl);
-        output.childEls[key] = thisEl;
+      for (let [key,arr] of vals) {
+        if (index > 0 || arr[1]) {
+          let thisEl = newEl('div', {
+            'class' : key,
+            'text' : arr[0]
+          });
+          parentEl.appendChild(thisEl);
+          output.childEls[key] = thisEl;
+        }
       }
 
       if (index > 0) {
@@ -400,13 +453,15 @@ window.addEventListener("ready", (function (doc) {
           'type' : 'number',
           'class' : 'playerBet',
           'min' : 100,
+          'max' : playerObj.money,
+          'step' : Math.min(50, playerObj.money),
           'value' : output.bid
         });
-        output.childEls.bid = thisBid;
 
+        thisBid.addEventListener('change', () => checkInput(thisBid));
+
+        output.childEls.bid = thisBid;
         parentEl.appendChild(thisBid);
-      } else {
-        parentEl.removeChild(output.childEls.money);
       }
 
       this.table.appendChild(parentEl);
@@ -423,12 +478,16 @@ window.addEventListener("ready", (function (doc) {
 
       for (let i = 0; i < count; i++) {
         let output = outputs[i],
-          hand = output.childEls.hand;
+          els = output.childEls,
+          hand = els.hand;
 
         output.hand = [];
         output.cardCount = 0;
-        if (i > 0) output.childEls.bid.disabled = false;
-        output.childEls.score.textContent = '0';
+        if (i > 0) {
+          els.bid.disabled = false;
+          els.bid.setAttribute("max",els.money.textContent);
+        }
+        els.score.textContent = '0';
         while (hand.firstChild) hand.removeChild(hand.firstChild);
       }
     }
@@ -443,20 +502,38 @@ window.addEventListener("ready", (function (doc) {
       active.childEls.title.classList.add('active');
     }
 
-    getBid(current) {
-      let active = this.playerOutputs[current],
-        bid = active.childEls.bid.value;
+    knockout(current) {
+      let active = this.playerOutputs[current];
 
-      active.childEls.money.textContent -= bid;
-      active.childEls.bid.disabled = true;
-
-      return bid;
+      active.childEls.title.classList.add('inactive');
+      active.skip = true;
 
     }
 
-    setMoney(current, score) {
-      let active = this.playerOutputs[current];
-      active.childEls.money.textContent = score;
+    getBid(current) {
+      let active = this.playerOutputs[current],
+        bidInput = active.childEls.bid;
+
+
+      bidInput.disabled = true;
+
+      return bidInput.value;
+    }
+
+    setMoney(current, money) {
+      let activeEls = this.playerOutputs[current].childEls,
+        moneyDiff = money - activeEls.money.textContent,
+        diff = moneyDiff > 0 ? 'pos' : 'neg';
+
+      activeEls.difference.textContent = moneyDiff;
+
+
+      activeEls.difference.classList.add(`show-${diff}`);
+      activeEls.money.textContent = money;
+
+      setTimeout(() => {
+        activeEls.difference.classList.remove(`show-${diff}`);
+      }, 5000);
     }
 
 
@@ -520,6 +597,7 @@ window.addEventListener("ready", (function (doc) {
 
   /* - misc functions ---------------------------------------------------- */
 
+
   //http://stackoverflow.com/a/12274886
   function newEl(el,attrs) {
     let element = doc.createElement(el);
@@ -537,6 +615,15 @@ window.addEventListener("ready", (function (doc) {
     }
 
     return element;
+  }
+
+  function checkInput(inputEl) {
+
+
+
+    if (!inputEl.validity.valid) {
+      console.log(inputEl.validity);
+    }
   }
 
   //http://stackoverflow.com/a/6921279
@@ -578,6 +665,8 @@ window.addEventListener("ready", (function (doc) {
     };
     return self.delay(fn, t);
   }
+
+
 
   return new BlackJack();
 
