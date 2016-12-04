@@ -39,13 +39,22 @@ html {
 }
 */
 
+.intro-form {
+  background-color: grey;
+  padding: 10px;
+}
+
+.intro-form.inactive {
+  opacity:0;
+}
+
 .title.active {
   color: white;
 }
 
 .player-frame {
   position: absolute;
-  top:260px;
+  top:240px;
 }
 
 .player-0.player-frame {top: 10px}
