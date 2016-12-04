@@ -22,7 +22,6 @@ window.addEventListener("ready", (function (doc) {
           'class' : 'intro-form'
         }));
 
-
       let rows = new Map([
         ['decks', ['Deck Count', 'number']],
         ['p-1', ['Player 1', 'text']],
@@ -58,8 +57,6 @@ window.addEventListener("ready", (function (doc) {
           decks = Math.min(inputs[0].value, 1),
           nameArr = [];
 
-
-
         for (let i = 1, n = inputs.length - 1; i < n; i++) {
           let val = inputs[i].value;
           if (val !== "") nameArr.push(val);
@@ -87,7 +84,6 @@ window.addEventListener("ready", (function (doc) {
       this.players = this.config.players.map((n) => new Player(n));
       //this.gamePlay = this.gamePlay();
       this.control = this.setUi();
-
 
       this.dealAll();
     }
@@ -161,11 +157,8 @@ window.addEventListener("ready", (function (doc) {
 
     get gamePlay() {
 
-      let players = this.players;
-
-
-
-      let out = {
+      let players = this.players,
+        out = {
 
         hit: () => {
           players[this.currentPlayer].hit(this);
@@ -186,9 +179,7 @@ window.addEventListener("ready", (function (doc) {
       return out;
     }
 
-
     dealAll() {
-      //console.log('new game');
       let players = this.players,
         currentPlayer = players[this.currentPlayer],
         dealer = players[0];
@@ -344,7 +335,6 @@ window.addEventListener("ready", (function (doc) {
         hasAce = this.hand.some(val => val[0] === 1),
         thisScore = this.score;
 
-
       if (firstScore && thisScore == 21) {
 
         scoreStr = `BlackJack ${thisScore}`;
@@ -378,16 +368,6 @@ window.addEventListener("ready", (function (doc) {
     }
 
   }
-
-  /* - ui object ---------------------------------------------------------- */
-
-
-
-  /* - gameplay functions ------------------------------------------------- */
-
-//  const gamePlay = {
-//
-//  };
 
   /* - card functions ---------------------------------------------------- */
   function cardValue(cardArr) {
