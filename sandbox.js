@@ -14,11 +14,15 @@ window.addEventListener("ready", (function (doc) {
       this.ui;
       this.decksCount;
       this.menu = new Menu(this.table, this.gamePlay.new);
+
+
     }
 
     newGame(opts) {
       let table = this.table;
       while (table.firstChild) table.removeChild(table.firstChild);
+
+
 
       opts = opts || {};
 
@@ -57,7 +61,16 @@ window.addEventListener("ready", (function (doc) {
 
       setTimeout(() => {
         this.nextPlayer();
-        if (dealer.cardCount < 2) this.dealAll();
+        if (dealer.cardCount < 2) {
+          this.dealAll();
+        } else {
+          this.current = 0;
+          let card = this.playerHit()
+
+          this.menu.announce('bets', this.nameCard(card));
+
+          this.current++;
+        }
       }, 100);
     }
 
@@ -105,6 +118,8 @@ window.addEventListener("ready", (function (doc) {
       this.ui.hit(this.current, card, result.scoreStr);
 
       if (result.endTurn && this.current > 0) this.playerStand();
+
+      return card;
     }
 
     playerStand() {
@@ -172,11 +187,17 @@ window.addEventListener("ready", (function (doc) {
     constructor(table,optsFn) {
       this.build(table);
       this.form;
+      this.announcment;
       this.optsFn = optsFn;
     }
 
     build(table) {
-      let form = table.parentElement.insertBefore(newEl('form', {
+      let announce = table.parentElement.insertBefore(newEl('span', {
+          id : 'game_announcer',
+          class : 'announcer',
+          text : announcement('welcome')
+        }), table),
+        form = table.parentElement.insertBefore(newEl('form', {
           class : 'intro-form'
         }), table),
         rows = new Map([
@@ -228,7 +249,12 @@ window.addEventListener("ready", (function (doc) {
         form.classList.add('inactive');
       });
 
+      this.announce = announce;
       this.form = form;
+    }
+
+    setAnnounce(str, arr) {
+      this.announce.textContent = announcement(str, arr);
     }
 
     toggleForm() {
@@ -666,6 +692,39 @@ window.addEventListener("ready", (function (doc) {
     return self.delay(fn, t);
   }
 
+  function announcement(event, modArr) {
+    modArr = modArr || Array(2);
+
+    let strings = {
+      'welcome' : `Welcome to blackjack. Choose your players`,
+      'bets' : `The Dealer starts with the ${modArr[0]}. Please place your bets.`,
+      'bet-low' : `${modArr[0]}, your bet is too low! Minimum bet £${modArr[1]}`,
+      'bet-high' : `${modArr[0]}, you cannot afford that bet! You only have £${modArr[1]}`,
+      'first-player' : `The bids are in, ${modArr[0]} starts.`,
+      'player-hit' : `${modArr[0]} draws the ${modArr[1]}`,
+      'player-stand' : `${modArr[0]} stands. ${modArr[1]}'s turn`,
+      'player-bust' : `${modArr[0]} busts! Time for ${modArr[1]}`,
+      'round-over-knockout' : `At the end of that round ${modArr[0]} knocked out! Time for another round.`,
+      'round-over' : `The round is over, on to the next!`,
+      'game-over' : `The game is up. Thankyou for playing!`
+    };
+
+    return strings[event];
+  }
+
+  function parseCard(cardArr) {
+    let suits = ['Diamonds', 'Hearts', 'Spades', 'Clubs'],
+      faces = {1 : ['Ace',11], 11 : ['Jack',10], 12 : ['Queen',10], 13 : ['King',10]};
+    return {
+      suit: suits[cardArr[1]].toLowerCase,
+      face: faces[valueArr[0]].charAt[0] || valueArr[0],
+
+    }
+
+
+    card.className = `card ${suits[valueArr[1]]}`;
+      card.appendChild(newEl('span', {'text': faces[valueArr[0]] || valueArr[0] }));
+  }
 
 
   return new BlackJack();
