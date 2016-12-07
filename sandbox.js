@@ -2,6 +2,8 @@ window.addEventListener("ready", (function (doc) {
   "use strict";
 
   /* - core gameplay ---------------------------------------------------- */
+
+
   class BlackJack {
     constructor(board) {
       let query = board || '#jr_cardTable';
@@ -65,10 +67,8 @@ window.addEventListener("ready", (function (doc) {
           this.dealAll();
         } else {
           this.current = 0;
-          let card = this.playerHit()
-
-          this.menu.announce('bets', this.nameCard(card));
-
+          this.playerHit();
+          this.menu.setAnnounce('bets');
           this.current++;
         }
       }, 100);
@@ -86,6 +86,7 @@ window.addEventListener("ready", (function (doc) {
       this.ui.panel.getElementsByClassName('ctrl-stand')[0].disabled = false;
       this.ui.panel.getElementsByClassName('ctrl-bid')[0].disabled = true;
 
+      this.menu.announce('first', this.players[this.current]);
       this.firstDeal();
     }
 
@@ -123,6 +124,7 @@ window.addEventListener("ready", (function (doc) {
     }
 
     playerStand() {
+
       this.nextPlayer();
 
       if (this.current == 0) {
@@ -130,6 +132,9 @@ window.addEventListener("ready", (function (doc) {
         this.ui.panel.getElementsByClassName('ctrl-stand')[0].disabled = true;
         this.autoPlay();
       } else {
+        let now = this.players[this.current - 1].name,
+          next = this.players[this.current].name;
+        this.menu.announce('stand', now, next);
         this.firstDeal();
       }
     }
@@ -253,8 +258,8 @@ window.addEventListener("ready", (function (doc) {
       this.form = form;
     }
 
-    setAnnounce(str, arr) {
-      this.announce.textContent = announcement(str, arr);
+    setAnnounce(evt, ...str) {
+      this.announce.textContent = announcement(evt, ...str);
     }
 
     toggleForm() {
@@ -304,7 +309,23 @@ window.addEventListener("ready", (function (doc) {
 
     deal() {
       let rng = Math.floor(Math.random() * this.cards.length);
-      return this.cards.splice(rng, 1)[0];
+      return this.parseCard(this.cards.splice(rng, 1)[0]);
+    }
+
+    parseCard(cardArr) {
+      console.log(cardArr);
+      let _0 = cardArr[0],
+        _1 = cardArr[1],
+        suits = ['diamonds', 'hearts', 'spades', 'clubs'],
+        faces = {1 : ['A',11], 11 : ['J',10], 12 : ['Q',10], 13 : ['K',10]},
+        out = { suit: suits[_1], face: _0, score: _0 };
+
+      if (cardArr[0] in faces ) {
+        out.face = faces[_0][0].charAt(0);
+        out.score = faces[_0][1];
+      }
+
+      return out;
     }
   }
 
@@ -329,9 +350,10 @@ window.addEventListener("ready", (function (doc) {
     }
 
     draw(newCard) {
+
       this.cardCount++;
       this.hand.push(newCard);
-      this.score += this.setScore(newCard);
+      this.score += newCard.score;
 
       return this.calculateScore();
     }
@@ -368,14 +390,6 @@ window.addEventListener("ready", (function (doc) {
       }
 
       return {scoreStr,endTurn};
-    }
-
-    setScore(newCardArr) {
-      let value = newCardArr[0];
-
-      return (1 == value) ? 11
-        : (10 < value) ? 10
-        : value;
     }
 
     setBid(bidNum) {
@@ -610,9 +624,19 @@ window.addEventListener("ready", (function (doc) {
     }
 
 
-    setCard(card,valueArr) {
-      let suits = ['diamonds', 'hearts', 'spades', 'clubs'],
-        faces = {1 : 'A', 11 : 'J', 12 : 'Q', 13 : 'K'};
+    setCard(flipped,cardObj) {
+      //let cardObj = parseCard(valueArr);
+
+
+      flipped.className = `card ${cardObj.suit}`;
+      flipped.appendChild(newEl('span', {'text': cardObj.face }));
+
+    }
+  }
+
+/*      let suits = ['diamonds', 'hearts', 'spades', 'clubs'],
+        faces = {1 : 'A', 11 : 'J', 12 : 'Q', 13 : 'K'};*
+
 
       card.className = `card ${suits[valueArr[1]]}`;
       card.appendChild(newEl('span', {'text': faces[valueArr[0]] || valueArr[0] }));
@@ -692,39 +716,27 @@ window.addEventListener("ready", (function (doc) {
     return self.delay(fn, t);
   }
 
-  function announcement(event, modArr) {
-    modArr = modArr || Array(2);
+  function announcement(event, ...str) {
+    //str = str || Array(2);
 
     let strings = {
-      'welcome' : `Welcome to blackjack. Choose your players`,
-      'bets' : `The Dealer starts with the ${modArr[0]}. Please place your bets.`,
-      'bet-low' : `${modArr[0]}, your bet is too low! Minimum bet £${modArr[1]}`,
-      'bet-high' : `${modArr[0]}, you cannot afford that bet! You only have £${modArr[1]}`,
-      'first-player' : `The bids are in, ${modArr[0]} starts.`,
-      'player-hit' : `${modArr[0]} draws the ${modArr[1]}`,
-      'player-stand' : `${modArr[0]} stands. ${modArr[1]}'s turn`,
-      'player-bust' : `${modArr[0]} busts! Time for ${modArr[1]}`,
-      'round-over-knockout' : `At the end of that round ${modArr[0]} knocked out! Time for another round.`,
+      'new' : `Welcome to blackjack. Choose your players`,
+      'bets' : `The cards are dealt. Please place your bets.`,
+      'low' : `${str[0]}, your bet is too low! Minimum bet £${str[1]}`,
+      'high' : `${str[0]}, you cannot afford that bet! You only have £${str[1]}`,
+      'first' : `The bids are in, ${str[0]} starts.`,
+      'stand' : `${str[0]} stands. ${str[1]}'s turn`,
+      'bust' : `${str[0]} busts! Time for ${str[1]}`,
+      'knockout' : `At the end of that round ${str[0]} knocked out! Time for another round.`,
       'round-over' : `The round is over, on to the next!`,
-      'game-over' : `The game is up. Thankyou for playing!`
+      'game-over' : `The game is up. Thank you for playing!`
     };
 
     return strings[event];
   }
 
-  function parseCard(cardArr) {
-    let suits = ['Diamonds', 'Hearts', 'Spades', 'Clubs'],
-      faces = {1 : ['Ace',11], 11 : ['Jack',10], 12 : ['Queen',10], 13 : ['King',10]};
-    return {
-      suit: suits[cardArr[1]].toLowerCase,
-      face: faces[valueArr[0]].charAt[0] || valueArr[0],
-
-    }
 
 
-    card.className = `card ${suits[valueArr[1]]}`;
-      card.appendChild(newEl('span', {'text': faces[valueArr[0]] || valueArr[0] }));
-  }
 
 
   return new BlackJack();
