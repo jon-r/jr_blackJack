@@ -104,6 +104,7 @@ html {
   padding: 2px;
   overflow: hidden;
   font-weight: bold;
+  position: relative;
   transition: transform 150ms ease;
 }
 

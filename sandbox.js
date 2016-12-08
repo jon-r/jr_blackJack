@@ -4,29 +4,35 @@ window.addEventListener("ready", (function (doc) {
   /* - core gameplay ---------------------------------------------------- */
 
 
+  /** Class blackjack represents the core game controller */
   class BlackJack {
+
+    /**
+     * Starts the game by locating the gameboard
+     * @param {string} board - query selector to set as the visual game ui.
+     */
     constructor(board) {
-      let query = board || '#jr_cardTable';
+      let query = board || '[data-blackjack]';
 
       this.table = doc.querySelector(query);
       this.current = 1;
-      //defined here, but not set until after the menu
       this.options;
       this.players;
       this.ui;
       this.decksCount;
       this.menu = new Menu(this.table, this.gamePlay.new);
-
-
     }
 
+    /**
+     * Empties the board to start a new Game. Creates the players, deck, in game UI, and then starts the gameplay.
+     * @param {object} opts - Options usually defined in the startup menu
+     *
+     */
     newGame(opts) {
-      let table = this.table;
-      while (table.firstChild) table.removeChild(table.firstChild);
-
-
-
       opts = opts || {};
+      let table = this.table;
+
+      while (table.firstChild) table.removeChild(table.firstChild);
 
       this.options = {
         deckCount: opts.deckCount || 6,
@@ -38,29 +44,32 @@ window.addEventListener("ready", (function (doc) {
       this.dealAll();
     }
 
+    /**
+     * Clears the board to start a new round without reseting player money or options
+     */
     restart() {
       this.current = 1;
-      this.players.map((player,index) => {
+      this.players.map((player,idx) => {
         player.restart();
         if (player.money == 0) {
-          if (index == this.current) this.current++;
+          if (idx == this.current) this.current++;
           player.skip = true;
-          this.ui.knockout(index);
+          this.ui.knockout(idx);
         }
       });
       this.ui.restart();
       this.dealAll();
     }
 
+    /**
+     * Deals the cards to all active players. Loops out until every player has two cards.
+     */
     dealAll() {
       let dealer = this.ui.playerOutputs[0];
 
       this.ui.deal(this.current);
-
-      this.ui.panel.getElementsByClassName('ctrl-hit')[0].disabled = true;
-      this.ui.panel.getElementsByClassName('ctrl-stand')[0].disabled = true;
-
-
+      this.ui.getButton('ctrl-hit').disabled = true;
+      this.ui.getButton('ctrl-stand').disabled = true;
 
       setTimeout(() => {
         this.nextPlayer();
@@ -70,14 +79,16 @@ window.addEventListener("ready", (function (doc) {
           this.current = 0;
           this.playerHit();
 
-          this.ui.panel.getElementsByClassName('ctrl-bid')[0].disabled = this.ui.checkAllBids();
+          this.ui.getButton('ctrl-bid').disabled = this.ui.checkBids();
 
           this.nextPlayer();
         }
       }, 100);
     }
 
-
+    /**
+     * Gets the players' bid input and locks bidding. After all bids are in the round commences.
+     */
     placeBids() {
       let playerCount = this.players.length;
 
@@ -86,38 +97,23 @@ window.addEventListener("ready", (function (doc) {
         if (!player.skip) player.bid = this.ui.getBid(i);
       }
 
-      this.ui.panel.getElementsByClassName('ctrl-hit')[0].disabled = false;
-      this.ui.panel.getElementsByClassName('ctrl-stand')[0].disabled = false;
-      this.ui.panel.getElementsByClassName('ctrl-bid')[0].disabled = true;
-
-
+      this.ui.getButton('ctrl-hit').disabled = false;
+      this.ui.getButton('ctrl-stand').disabled = false;
+      this.ui.getButton('ctrl-bid').disabled = true;
       this.firstDeal();
     }
 
-    endRound() {
-      console.log('round over');
-      let dealer = this.players[0],
-        playerCount = this.players.length;
-
-      if (playerCount == 1) {
-        this.endAll();
-      } else {
-
-
-        for (let i = 1; i < playerCount; i++) { //skipping dealer
-          let player = this.players[i];
-          if (!player.skip)
-            this.ui.setMoney(i, player.getMoney(dealer.score, dealer.cardCount));
-        }
-
-        setTimeout(() => this.restart(), 5000);
-      }
+    /**
+     * Reveals the players first two cards.
+     */
+    firstDeal() {
+      delay(() => this.playerHit(), 500)
+        .delay(() => this.playerHit(), 500);
     }
 
-    endAll() {
-      console.log('game over');
-    }
-
+    /**
+     * Reveals the current players card, and updates their score to the player object, and visual UI. If the player reaches 21 points or more, they automatically stand.
+     */
     playerHit() {
       let card = this.deck.deal(),
         result = this.players[this.current].draw(card);
@@ -125,36 +121,29 @@ window.addEventListener("ready", (function (doc) {
       this.ui.hit(this.current, card, result.scoreStr);
 
       if (result.endTurn && this.current > 0) this.playerStand();
-
-      return card;
     }
 
+    /**
+     * Moves clockwise to the next player on the table. When the round reachs the dealer he plays automatically.
+     */
     playerStand() {
-
       this.nextPlayer();
 
       if (this.current == 0) {
-        this.ui.panel.getElementsByClassName('ctrl-hit')[0].disabled = true;
-        this.ui.panel.getElementsByClassName('ctrl-stand')[0].disabled = true;
+        this.ui.getButton('ctrl-hit').disabled = true;
+        this.ui.getButton('ctrl-stand').disabled = true;
         this.autoPlay();
       } else {
         this.firstDeal();
       }
     }
 
-    firstDeal() {
-      delay(() => this.playerHit(), 500)
-        .delay(() => this.playerHit(), 500);
-    }
-
-    openMenu() {
-      this.menu.toggleForm();
-    }
-
+    /**
+     * Updates to the next player. Automatically skips inactive players. Updates the UI.
+     */
     nextPlayer() {
       let current = this.current,
         players = this.players;
-
 
       this.current = (current + 1) % (players.length);
 
@@ -163,9 +152,11 @@ window.addEventListener("ready", (function (doc) {
       } else {
         this.ui.setActive(this.current);
       }
-
     }
 
+    /**
+     * The dealer's automatic hand. Draws until 17+ and then stands.
+     */
     autoPlay() {
       let player = this.players[this.current];
 
@@ -179,25 +170,72 @@ window.addEventListener("ready", (function (doc) {
       }, 500);
     }
 
-    //hooking ui to main functions
+    /**
+     * After the dealer has his turn, all scores are compared and winnings handed out.
+     */
+    endRound() {
+      console.log('round over');
+      let dealer = this.players[0],
+        playerCount = this.players.length;
+
+      console.log(playerCount);
+
+      if (playerCount == 1) {
+        this.endAll();
+      } else {
+        for (let i = 1; i < playerCount; i++) { //skipping dealer
+          let player = this.players[i];
+          if (!player.skip) {
+            let money = player.getMoney(dealer.score, dealer.cardCount);
+            this.ui.setMoney(i, money);
+          }
+        }
+
+        setTimeout(() => this.restart(), 5000);
+      }
+    }
+
+    /**
+     * If there are no more players the game is over. GG WP.
+     */
+    endAll() {
+      console.log('game over');
+    }
+
+    /**
+     * Hooks UI buttons to the core game functions.
+     * @returns {Object} gameplay functions
+     */
     get gamePlay() {
       return {
         new: (opts) => this.newGame(opts),
         hit: () => this.playerHit(),
         stand: () => this.playerStand(),
-        menu: () => this.openMenu(),
+        menu: () => this.menu.toggleForm(),
         bid: () => this.placeBids()
       };
     }
+
+
   }
 
+  /** Class Menu represents the pre-game options menu */
   class Menu {
+    /**
+     * Sets up the user input to start the game
+     * @param {oject}    table  - table element
+     * @param {function} optsFn - game function to update the settings and start a new game
+     */
     constructor(table,optsFn) {
       this.build(table);
       this.form;
       this.optsFn = optsFn;
     }
 
+    /**
+     * Creates the user options input.
+     * @param {object} table - table element
+     */
     build(table) {
       let form = table.parentElement.insertBefore(newEl('form', {
           class : 'intro-form'
@@ -243,19 +281,24 @@ window.addEventListener("ready", (function (doc) {
 
       form.addEventListener('submit', (e) => {
         e.preventDefault();
-
         this.setupGame(e.target.elements);
-
         form.classList.add('inactive');
       });
 
       this.form = form;
     }
 
+    /**
+     * Shows and hides the form during gameplay.
+     */
     toggleForm() {
       this.form.classList.toggle('inactive');
     }
 
+    /**
+     * parses the options input, and starts the game.
+     * @param {Array} inputs - html form inputs
+     */
     setupGame(inputs) {
       let opts = {
         deckCount :  inputs[0].value,
@@ -271,19 +314,24 @@ window.addEventListener("ready", (function (doc) {
     }
   }
 
+  /** class Deck represents the deck of cards */
   class Deck {
+    /**
+     * Sets up a new deck oject
+     * @param {number} deckCount - number of decks to use
+     */
     constructor(deckCount) {
       this.cards = [];
       this.count = deckCount;
       this.build();
     }
 
+    /**
+     * Builds a deck of cards for the dealer to use. Iterates through [this.cards] decks, 4 suits and 14 cards per suit.
+     */
     build() {
-      //decks
       for (let i = 0; i < this.count; i++) {
-        //suits
         for (let j = 0; j < 4; j++) {
-          //values
           for (let k = 1; k < 14; k++) {
             this.cards.push([k, j]);
           }
@@ -291,34 +339,43 @@ window.addEventListener("ready", (function (doc) {
       }
     }
 
+    /**
+     * rebuilds the deck without changing the deck count
+     */
     restart() {
       this.cards = [];
       this.build();
     }
 
+    /**
+     * draws a single card at random and gives it a name and score.
+     * @returns {Object} card - card with face value and name.
+     */
     deal() {
-      let rng = Math.floor(Math.random() * this.cards.length);
-      return this.parseCard(this.cards.splice(rng, 1)[0]);
-    }
-
-    parseCard(cardArr) {
-
-      let _0 = cardArr[0],
+      let rng = Math.floor(Math.random() * this.cards.length),
+        cardArr = this.cards.splice(rng, 1)[0],
+        _0 = cardArr[0],
         _1 = cardArr[1],
         suits = ['diamonds', 'hearts', 'spades', 'clubs'],
-        faces = {1 : ['A',11], 11 : ['J',10], 12 : ['Q',10], 13 : ['K',10]},
-        out = { suit: suits[_1], face: _0, score: _0 };
+        faces = {1: ['A',11], 11: ['J',10], 12: ['Q',10], 13: ['K',10]},
+        card = { suit: suits[_1], face: _0, score: _0 };
 
       if (cardArr[0] in faces ) {
-        out.face = faces[_0][0].charAt(0);
-        out.score = faces[_0][1];
+        card.face = faces[_0][0].charAt(0);
+        card.score = faces[_0][1];
       }
 
-      return out;
+      return card;
     }
+
   }
 
+  /** class Player represents a singple playable user. */
   class Player {
+    /**
+     * sets up a new player object
+     * @param {string} name - The name of the player.
+     */
     constructor(name) {
       this.name = name;
       this.cardCount = 0;
@@ -330,6 +387,9 @@ window.addEventListener("ready", (function (doc) {
       this.skip = false;
     }
 
+    /**
+     * resets the settings for the next round without changing the player's money or name
+     */
     restart() {
       this.cardCount = 0;
       this.score = 0;
@@ -338,21 +398,20 @@ window.addEventListener("ready", (function (doc) {
       this.hardAce = true;
     }
 
+    /**
+     * draws a card from the deck and adds it to the player's hand.
+     * @param   {object} newCard - card dealt
+     * @returns {object} result - the result of this drawn card to the player.
+     */
     draw(newCard) {
-
       this.cardCount++;
       this.hand.push(newCard);
       this.score += newCard.score;
 
-      return this.calculateScore();
-    }
-
-    calculateScore() {
       let scoreStr = '0',
         endTurn = false,
         firstScore = this.cardCount < 3,
         softAce = this.hand.some(card => card.face == 'A'),
-          //(this.hand[0].face == 'A' || this.hand[1].face == 'A'),
         thisScore = this.score;
 
       if (firstScore && thisScore == 21) {
@@ -382,20 +441,24 @@ window.addEventListener("ready", (function (doc) {
       return {scoreStr,endTurn};
     }
 
-
-    getMoney(dealerScore, dealerCount) {
+    /**
+     * calculates the betting return to the player
+     * @param   {number} dlrScore - the score of the dealer this turn
+     * @param   {number} dlrCount - the number of cards the dealer drew
+     * @returns {number} money - the round's bettings win
+     */
+    getMoney(dlrScore, dlrCount) {
       let odds = 2,
-        wins = 0,
-        playerScore = this.score,
-        dealerBlackJack = (dealerScore == 21 && dealerCount < 3),
-        blackJack = (playerScore == 21 && this.cardCount < 3);
+        plyrScore = this.score,
+        dlrBlackJack = (dlrScore == 21 && dlrCount < 3),
+        blackJack = (plyrScore == 21 && this.cardCount < 3);
 
-      if (playerScore < 22) {
-        if (blackJack && !dealerBlackJack) {
+      if (plyrScore < 22) {
+        if (blackJack && !dlrBlackJack) {
           odds = 1.5;
-        } else if (playerScore > dealerScore || dealerScore > 21) {
+        } else if (plyrScore > dlrScore || dlrScore > 21) {
           odds = 1;
-        } else if (blackJack && dealerBlackJack || playerScore == dealerScore) {
+        } else if (blackJack && dlrBlackJack || plyrScore == dlrScore) {
           odds = 0;
         } else {
           odds = -1;
@@ -404,20 +467,21 @@ window.addEventListener("ready", (function (doc) {
         odds = -1;
       }
 
-      wins = this.bid * odds;
-
-      this.money += wins;
-
+      this.money += this.bid * odds;
 
       return this.money;
-
     }
   }
 
+  /** class UI represents the in game user interface and visuals */
   class UI {
+    /**
+     * sets up the UI
+     * @param {object} game - the core game object
+     */
     constructor(game) {
       this.table = game.table;
-      this.playerOutputs = game.players.map(this.buildPlayers, this);
+      this.playerOutputs = game.players.map(this.buildPlayer, this);
       this.panel = this.buildPanel();
       this.panel.addEventListener('click', e => {
         let ctrl = e.target.dataset.ctrl;
@@ -425,6 +489,10 @@ window.addEventListener("ready", (function (doc) {
       }, false);
     }
 
+    /**
+     * creates the in game button controls
+     * @returns {object} panel - the game controls html element
+     */
     buildPanel() {
       let panel = newEl('div', {'class' : 'control-box' });
 
@@ -442,8 +510,25 @@ window.addEventListener("ready", (function (doc) {
       return panel;
     }
 
-    buildPlayers(playerObj,index) {
-      let parentEl = newEl('div', { 'class' : `player-frame player-${index}` }),
+    /**
+     * targets the buttons in the control panel
+     * @param   {string} btnClass - class of target button
+     * @returns {object} button html element
+     */
+    getButton(btnClass) {
+      return this.panel.getElementsByClassName(btnClass)[0];
+    }
+
+    /**
+     * creates a visual representation for a player
+     * @param   {object} playerObj - initial player values
+     * @param   {number} idx       - index of player in the array of players
+     * @returns {object} player    - in game player html element
+     */
+    buildPlayer(playerObj,idx) {
+      let parentEl = newEl('div', {
+          'class': `player-frame player-${idx}`
+        }),
         output = {
           bid: 500,
           cardCount: 0,
@@ -461,10 +546,8 @@ window.addEventListener("ready", (function (doc) {
           ['hand', ['', true]]
         ]);
 
-
-
       for (let [key,arr] of vals) {
-        if (index > 0 || arr[1]) {
+        if (idx > 0 || arr[1]) {
           let thisEl = newEl('div', {
             'class' : key,
             'text' : arr[0]
@@ -474,32 +557,33 @@ window.addEventListener("ready", (function (doc) {
         }
       }
 
-      if (index > 0) {
+      if (idx > 0) {
         let thisBid = newEl('input', {
           'type' : 'number',
           'class' : 'playerBet',
-          'min' : Math.max(100,playerObj.money),
+          'min' : Math.min(100,playerObj.money),
           'max' : playerObj.money,
           'value' : output.bid
         });
 
         thisBid.addEventListener('change', (e) => {
           let check = this.checkBid(e.target);
-          this.panel.getElementsByClassName('ctrl-bid')[0].disabled = check;
+          this.getButton('ctrl-bid').disabled = check;
         });
-
         output.childEls.bid = thisBid;
         parentEl.appendChild(thisBid);
       }
 
       this.table.appendChild(parentEl);
-
       output.goX = this.table.offsetWidth - parentEl.offsetLeft;
       output.goY = -parentEl.offsetTop;
 
       return output;
     }
 
+    /**
+     * resets the visual UI and clears the table for the next round.
+     */
     restart() {
       let outputs = this.playerOutputs,
         count = outputs.length;
@@ -520,6 +604,10 @@ window.addEventListener("ready", (function (doc) {
       }
     }
 
+    /**
+     * highlights the active player.
+     * @param {number} current - index of the current active player
+     */
     setActive(current) {
       let active = this.playerOutputs[current];
 
@@ -530,6 +618,10 @@ window.addEventListener("ready", (function (doc) {
       active.childEls.title.classList.add('active');
     }
 
+    /**
+     * removes a player from the game
+     * @param {number} current - index of the player to be removed
+     */
     knockout(current) {
       let active = this.playerOutputs[current];
 
@@ -538,16 +630,25 @@ window.addEventListener("ready", (function (doc) {
 
     }
 
+    /**
+     * gets the player submitted bid
+     * @param   {number} current - the index of the active player
+     * @returns {number} value - the bid amount
+     */
     getBid(current) {
       let active = this.playerOutputs[current],
         bidInput = active.childEls.bid;
-
 
       bidInput.disabled = true;
 
       return bidInput.value;
     }
 
+    /**
+     * validates the players bid, if it is within the biddable range
+     * @param   {object}  inputEl - user bid input
+     * @returns {boolean} validity check
+     */
     checkBid(inputEl) {
       let invalid = !inputEl.validity.valid;
       if (invalid) {
@@ -555,14 +656,20 @@ window.addEventListener("ready", (function (doc) {
       } else {
         inputEl.classList.remove('invalid');
       }
+
       return invalid;
     }
 
-    checkAllBids() {
+    /**
+     * loops the checkbid through all active players.
+     * returns validity only if all are valid
+     * @returns {boolean} validity check
+     */
+    checkBids() {
       let out = [];
 
-      this.playerOutputs.forEach((player,index) => {
-        if (!player.skip && index > 0) {
+      this.playerOutputs.forEach((player,idx) => {
+        if (!player.skip && idx > 0) {
           out.push(this.checkBid(player.childEls.bid));
         }
       });
@@ -570,40 +677,32 @@ window.addEventListener("ready", (function (doc) {
       return out.some(bool => bool == true);
     }
 
+    /**
+     * updates the player's visual score based on winnings. pings the screen with the difference
+     * @param {number} current - target player index
+     * @param {number} money   - players new score at the end of the round
+     */
     setMoney(current, money) {
       let activeEls = this.playerOutputs[current].childEls,
         moneyDiff = money - activeEls.money.textContent,
+        diff;
+
+      if (moneyDiff !== 0) {
         diff = moneyDiff > 0 ? 'pos' : 'neg';
+        activeEls.difference.textContent = moneyDiff;
+        activeEls.difference.classList.add(`show-${diff}`);
+        activeEls.money.textContent = money;
 
-      activeEls.difference.textContent = moneyDiff;
-
-
-      activeEls.difference.classList.add(`show-${diff}`);
-      activeEls.money.textContent = money;
-
-      setTimeout(() => {
-        activeEls.difference.classList.remove(`show-${diff}`);
-      }, 5000);
-    }
-
-
-    hit(current, card, scoreStr) {
-      let active = this.playerOutputs[current],
-        nth = active.hand.length;
-
-      active.childEls.score.textContent = scoreStr;
-
-      if (nth < active.cardCount) {
-
-        active.hand.push(card);
-        this.reveal(current,nth,card);
-
-      } else {
-        delay(() => this.deal(current), 0)
-        .delay(() => this.hit(current,card,scoreStr), 200);
+        setTimeout(() => {
+          activeEls.difference.classList.remove(`show-${diff}`);
+        }, 5000);
       }
     }
 
+    /**
+     * visually adds a card to the player's hand
+     * @param {number} current - target player
+     */
     deal(current) {
       let active = this.playerOutputs[current],
         x = active.goX - (active.cardCount * 20),
@@ -617,11 +716,36 @@ window.addEventListener("ready", (function (doc) {
 
       active.cardCount++;
       active.childEls.hand.appendChild(newCard);
-
       window.getComputedStyle(newCard).transform;
       newCard.style.transform = '';
     }
 
+    /**
+     * visually deals a card to the player and updates their score display
+     * @param {number} current  target player index
+     * @param {object} card     player's dealt card
+     * @param {string} scoreStr players new score display
+     */
+    hit(current, card, scoreStr) {
+      let active = this.playerOutputs[current],
+        nth = active.hand.length;
+
+      active.childEls.score.textContent = scoreStr;
+      if (nth < active.cardCount) {
+        active.hand.push(card);
+        this.reveal(current,nth,card);
+      } else {
+        delay(() => this.deal(current), 0)
+        .delay(() => this.hit(current,card,scoreStr), 200);
+      }
+    }
+
+    /**
+     * turns over the players card, revealing face value
+     * @param {number} current - target player
+     * @param {number} nth     - index of card to be revealed
+     * @param {object} card    - what the card turns out to be
+     */
     reveal(current,nth,card) {
       let active = this.playerOutputs[current],
         flipped = active.childEls.hand.getElementsByClassName('card')[nth];
@@ -630,41 +754,37 @@ window.addEventListener("ready", (function (doc) {
 
       delay(() => flipped.style.transform = 'translateY(-80px) rotateX(-90deg)', 0)
       .delay(() => this.setCard(flipped,card),150)
-      .delay(() => flipped.style.transform = 'rotateX(0)', 150);
+      .delay(() => flipped.style.transform = '', 150);
     }
 
-
+    /**
+     * updates the card element with the new face values
+     * @param {object} flipped - card html element
+     * @param {object} cardObj - dealt card object
+     */
     setCard(flipped,cardObj) {
-      //let cardObj = parseCard(valueArr);
-
-
       flipped.className = `card ${cardObj.suit}`;
       flipped.appendChild(newEl('span', {'text': cardObj.face }));
-
     }
+
   }
 
-/*      let suits = ['diamonds', 'hearts', 'spades', 'clubs'],
-        faces = {1 : 'A', 11 : 'J', 12 : 'Q', 13 : 'K'};*
-
-
-      card.className = `card ${suits[valueArr[1]]}`;
-      card.appendChild(newEl('span', {'text': faces[valueArr[0]] || valueArr[0] }));
-
-      return card;
-    }
-  }
 
   /* - misc functions ---------------------------------------------------- */
 
-
-  //http://stackoverflow.com/a/12274886
+  /**
+   * creates a new element object, with predefined attributes
+   * http://stackoverflow.com/a/12274886
+   * @param   {string} el    - element type
+   * @param   {Array}  attrs - element attributes
+   * @returns {object} new element in the DOM
+   */
   function newEl(el,attrs) {
     let element = doc.createElement(el);
 
-    for (var idx in attrs) {
+    for (let idx in attrs) {
       if ((idx === 'styles' || idx === 'style') && typeof attrs[idx] === 'object') {
-        for (var prop in attrs[idx]) {
+        for (let prop in attrs[idx]) {
           element.style[prop] = attrs[idx][prop];
         }
       } else if (idx === 'text') {
@@ -678,6 +798,13 @@ window.addEventListener("ready", (function (doc) {
   }
 
   //http://stackoverflow.com/a/6921279
+
+  /**
+   * chains functions to run in sequence, with preset delay
+   * @param   {function} fn - function to run
+   * @param   {time}     t - delay in ms before performing function
+   * @returns {*}         self
+   */
   function delay(fn, t) {
     // private instance variables
     var queue = [],
@@ -718,6 +845,5 @@ window.addEventListener("ready", (function (doc) {
   }
 
   return new BlackJack();
-
 }(document)));
 
