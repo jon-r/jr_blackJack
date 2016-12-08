@@ -50,6 +50,9 @@ html {
   content:"+";
 }
 
+.invalid {
+  color: red;
+}
 
 
 /*

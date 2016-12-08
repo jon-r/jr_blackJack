@@ -59,7 +59,8 @@ window.addEventListener("ready", (function (doc) {
 
       this.ui.panel.getElementsByClassName('ctrl-hit')[0].disabled = true;
       this.ui.panel.getElementsByClassName('ctrl-stand')[0].disabled = true;
-      this.ui.panel.getElementsByClassName('ctrl-bid')[0].disabled = false;
+
+
 
       setTimeout(() => {
         this.nextPlayer();
@@ -68,11 +69,14 @@ window.addEventListener("ready", (function (doc) {
         } else {
           this.current = 0;
           this.playerHit();
-          this.menu.setAnnounce('bets');
-          this.current++;
+
+          this.ui.panel.getElementsByClassName('ctrl-bid')[0].disabled = this.ui.checkAllBids();
+
+          this.nextPlayer();
         }
       }, 100);
     }
+
 
     placeBids() {
       let playerCount = this.players.length;
@@ -86,7 +90,7 @@ window.addEventListener("ready", (function (doc) {
       this.ui.panel.getElementsByClassName('ctrl-stand')[0].disabled = false;
       this.ui.panel.getElementsByClassName('ctrl-bid')[0].disabled = true;
 
-      this.menu.announce('first', this.players[this.current]);
+
       this.firstDeal();
     }
 
@@ -95,15 +99,17 @@ window.addEventListener("ready", (function (doc) {
       let dealer = this.players[0],
         playerCount = this.players.length;
 
-      for (let i = 1; i < playerCount; i++) { //skipping dealer
-        let player = this.players[i];
-        if (!player.skip)
-          this.ui.setMoney(i, player.getMoney(dealer.score, dealer.cardCount));
-      }
-
       if (playerCount == 1) {
         this.endAll();
       } else {
+
+
+        for (let i = 1; i < playerCount; i++) { //skipping dealer
+          let player = this.players[i];
+          if (!player.skip)
+            this.ui.setMoney(i, player.getMoney(dealer.score, dealer.cardCount));
+        }
+
         setTimeout(() => this.restart(), 5000);
       }
     }
@@ -132,9 +138,6 @@ window.addEventListener("ready", (function (doc) {
         this.ui.panel.getElementsByClassName('ctrl-stand')[0].disabled = true;
         this.autoPlay();
       } else {
-        let now = this.players[this.current - 1].name,
-          next = this.players[this.current].name;
-        this.menu.announce('stand', now, next);
         this.firstDeal();
       }
     }
@@ -192,17 +195,11 @@ window.addEventListener("ready", (function (doc) {
     constructor(table,optsFn) {
       this.build(table);
       this.form;
-      this.announcment;
       this.optsFn = optsFn;
     }
 
     build(table) {
-      let announce = table.parentElement.insertBefore(newEl('span', {
-          id : 'game_announcer',
-          class : 'announcer',
-          text : announcement('welcome')
-        }), table),
-        form = table.parentElement.insertBefore(newEl('form', {
+      let form = table.parentElement.insertBefore(newEl('form', {
           class : 'intro-form'
         }), table),
         rows = new Map([
@@ -214,8 +211,6 @@ window.addEventListener("ready", (function (doc) {
           ['p-5', ['Player 5', 'text', 'Ethan']],
           ['submit', ['New Game', 'submit', 'Go']]
         ]);
-
-
 
       for (let [name,arr] of rows) {
         let newLabel = newEl('label', {
@@ -254,18 +249,12 @@ window.addEventListener("ready", (function (doc) {
         form.classList.add('inactive');
       });
 
-      this.announce = announce;
       this.form = form;
-    }
-
-    setAnnounce(evt, ...str) {
-      this.announce.textContent = announcement(evt, ...str);
     }
 
     toggleForm() {
       this.form.classList.toggle('inactive');
     }
-
 
     setupGame(inputs) {
       let opts = {
@@ -313,7 +302,7 @@ window.addEventListener("ready", (function (doc) {
     }
 
     parseCard(cardArr) {
-      console.log(cardArr);
+
       let _0 = cardArr[0],
         _1 = cardArr[1],
         suits = ['diamonds', 'hearts', 'spades', 'clubs'],
@@ -362,14 +351,15 @@ window.addEventListener("ready", (function (doc) {
       let scoreStr = '0',
         endTurn = false,
         firstScore = this.cardCount < 3,
-        softAce = (this.hand[0] === 1 || this.hand[1] === 1),
+        softAce = this.hand.some(card => card.face == 'A'),
+          //(this.hand[0].face == 'A' || this.hand[1].face == 'A'),
         thisScore = this.score;
 
       if (firstScore && thisScore == 21) {
         scoreStr = `BlackJack ${thisScore}`;
         endTurn = true;
 
-      } else if (softAce) {
+      } else if (softAce && thisScore < 21) {
         scoreStr = `Soft ${thisScore}`;
         this.hardAce = false;
 
@@ -392,10 +382,6 @@ window.addEventListener("ready", (function (doc) {
       return {scoreStr,endTurn};
     }
 
-    setBid(bidNum) {
-      //this.money = this.money - bidNum;
-      this.bid = bidNum;
-    }
 
     getMoney(dealerScore, dealerCount) {
       let odds = 2,
@@ -492,13 +478,15 @@ window.addEventListener("ready", (function (doc) {
         let thisBid = newEl('input', {
           'type' : 'number',
           'class' : 'playerBet',
-          'min' : 100,
+          'min' : Math.max(100,playerObj.money),
           'max' : playerObj.money,
-          'step' : Math.min(50, playerObj.money),
           'value' : output.bid
         });
 
-        thisBid.addEventListener('change', () => checkInput(thisBid));
+        thisBid.addEventListener('change', (e) => {
+          let check = this.checkBid(e.target);
+          this.panel.getElementsByClassName('ctrl-bid')[0].disabled = check;
+        });
 
         output.childEls.bid = thisBid;
         parentEl.appendChild(thisBid);
@@ -558,6 +546,28 @@ window.addEventListener("ready", (function (doc) {
       bidInput.disabled = true;
 
       return bidInput.value;
+    }
+
+    checkBid(inputEl) {
+      let invalid = !inputEl.validity.valid;
+      if (invalid) {
+        inputEl.classList.add('invalid');
+      } else {
+        inputEl.classList.remove('invalid');
+      }
+      return invalid;
+    }
+
+    checkAllBids() {
+      let out = [];
+
+      this.playerOutputs.forEach((player,index) => {
+        if (!player.skip && index > 0) {
+          out.push(this.checkBid(player.childEls.bid));
+        }
+      });
+
+      return out.some(bool => bool == true);
     }
 
     setMoney(current, money) {
@@ -667,15 +677,6 @@ window.addEventListener("ready", (function (doc) {
     return element;
   }
 
-  function checkInput(inputEl) {
-
-
-
-    if (!inputEl.validity.valid) {
-      console.log(inputEl.validity);
-    }
-  }
-
   //http://stackoverflow.com/a/6921279
   function delay(fn, t) {
     // private instance variables
@@ -715,29 +716,6 @@ window.addEventListener("ready", (function (doc) {
     };
     return self.delay(fn, t);
   }
-
-  function announcement(event, ...str) {
-    //str = str || Array(2);
-
-    let strings = {
-      'new' : `Welcome to blackjack. Choose your players`,
-      'bets' : `The cards are dealt. Please place your bets.`,
-      'low' : `${str[0]}, your bet is too low! Minimum bet £${str[1]}`,
-      'high' : `${str[0]}, you cannot afford that bet! You only have £${str[1]}`,
-      'first' : `The bids are in, ${str[0]} starts.`,
-      'stand' : `${str[0]} stands. ${str[1]}'s turn`,
-      'bust' : `${str[0]} busts! Time for ${str[1]}`,
-      'knockout' : `At the end of that round ${str[0]} knocked out! Time for another round.`,
-      'round-over' : `The round is over, on to the next!`,
-      'game-over' : `The game is up. Thank you for playing!`
-    };
-
-    return strings[event];
-  }
-
-
-
-
 
   return new BlackJack();
 
