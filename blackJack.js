@@ -1,9 +1,6 @@
 /*
 TO DO
 
-bug
-- check remaining players for endgame (player count doesnt go down)
-
 feature
 - try to add remaining player options (split? forfeit, etc)
 
@@ -99,17 +96,22 @@ window.addEventListener("ready", (function (doc) {
      * Gets the players' bid input and locks bidding. After all bids are in the round commences.
      */
     placeBids() {
-      let playerCount = this.players.length;
-
-      for (let i = 1; i < playerCount; i++) { //skipping dealer
-        let player = this.players[i];
-        if (!player.skip) player.bid = this.ui.getBid(i);
-      }
-
-      this.ui.getButton('ctrl-hit').disabled = false;
-      this.ui.getButton('ctrl-stand').disabled = false;
       this.ui.getButton('ctrl-bid').disabled = true;
-      this.firstDeal();
+
+      if (!this.ui.checkBids()) {
+        let playerCount = this.players.length;
+
+        for (let i = 1; i < playerCount; i++) { //skipping dealer
+          let player = this.players[i];
+          if (!player.skip) player.bid = this.ui.getBid(i);
+        }
+
+
+        this.ui.getButton('ctrl-hit').disabled = false;
+        this.ui.getButton('ctrl-stand').disabled = false;
+
+        this.firstDeal();
+      }
     }
 
     /**
@@ -121,7 +123,8 @@ window.addEventListener("ready", (function (doc) {
     }
 
     /**
-     * Reveals the current players card, and updates their score to the player object, and visual UI. If the player reaches 21 points or more, they automatically stand.
+     * Reveals the current players card, and updates their score to the player object & UI.
+     * If the player reaches 21 points or more, they automatically stand.
      */
     playerHit() {
       let card = this.deck.deal(),
@@ -415,7 +418,7 @@ window.addEventListener("ready", (function (doc) {
     /**
      * draws a card from the deck and adds it to the player's hand.
      * @param   {object} newCard - card dealt
-     * @returns {object} result - the result of this drawn card to the player.
+     * @returns {object} result - the card score, and if this card forces the player to skip.
      */
     draw(newCard) {
       this.cardCount++;
@@ -610,8 +613,10 @@ window.addEventListener("ready", (function (doc) {
         output.hand = [];
         output.cardCount = 0;
         if (i > 0) {
+          let curMoney = els.money.textContent;
           els.bid.disabled = false;
-          els.bid.setAttribute("max",els.money.textContent);
+          els.bid.setAttribute("max",curMoney);
+          els.bid.setAttribute("min",Math.min(100,curMoney));
         }
         els.score.textContent = '0';
         while (hand.firstChild) hand.removeChild(hand.firstChild);
@@ -640,6 +645,7 @@ window.addEventListener("ready", (function (doc) {
       let active = this.playerOutputs[current];
 
       active.childEls.title.classList.add('inactive');
+      active.childEls.bid.value = 0;
       active.skip = true;
 
     }
@@ -676,19 +682,20 @@ window.addEventListener("ready", (function (doc) {
 
     /**
      * loops the checkbid through all active players.
-     * returns validity only if all are valid
+     * breaks if any are invalid
      * @returns {boolean} validity check
      */
     checkBids() {
-      let out = [];
+      let out = 0,
+        players = this.playerOutputs,
+        count = players.length;
 
-      this.playerOutputs.forEach((player,idx) => {
-        if (!player.skip && idx > 0) {
-          out.push(this.checkBid(player.childEls.bid));
-        }
-      });
+      for (let i = 1; i < count; i++) {
+        let plyr = players[i];
+        if (!plyr.skip && this.checkBid(plyr.childEls.bid)) out++;
 
-      return out.some(bool => bool == true);
+      }
+      return out > 0;
     }
 
     /**
