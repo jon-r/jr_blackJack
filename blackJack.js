@@ -118,8 +118,12 @@ window.addEventListener("ready", (function (doc) {
      * Reveals the players first two cards.
      */
     firstDeal() {
+      let currPlayer = this.players[this.current];
       delay(() => this.playerHit(), 500)
         .delay(() => this.playerHit(), 500);
+
+      this.ui.getButton('ctrl-double').disabled = currPlayer.bid * 2 > currPlayer.money;
+
     }
 
     /**
@@ -151,11 +155,29 @@ window.addEventListener("ready", (function (doc) {
     }
 
     /**
+     * Doubles the player's bid to draw a single card and end their turn.
+     */
+    playerDouble() {
+      let current = this.players[this.current],
+        card = this.deck.deal(),
+        result = current.draw(card);
+
+      current.bid *= 2;
+
+      this.ui.playerOutputs[this.current].bid = current.bid;
+      this.ui.hit(this.current, card, result.scoreStr);
+
+      this.playerStand();
+    }
+
+    /**
      * Updates to the next player. Automatically skips inactive players. Updates the UI.
      */
     nextPlayer() {
       let current = this.current,
         players = this.players;
+
+
 
       this.current = (current + 1) % (players.length);
 
@@ -228,6 +250,7 @@ window.addEventListener("ready", (function (doc) {
         new: (opts) => this.newGame(opts),
         hit: () => this.playerHit(),
         stand: () => this.playerStand(),
+        double: () => this.playerDouble(),
         menu: () => this.menu.toggleForm(),
         bid: () => this.placeBids()
       };
@@ -513,7 +536,7 @@ window.addEventListener("ready", (function (doc) {
     buildPanel() {
       let panel = newEl('div', {'class' : 'control-box' });
 
-      ['bid','hit', 'stand', 'menu'].forEach(name => {
+      ['bid','hit', 'stand', 'double', 'menu'].forEach(name => {
         const newCtrl = newEl('button', {
           'class' : `ctrl ctrl-${name}`,
           'text' : name,
