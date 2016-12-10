@@ -31,6 +31,7 @@ window.addEventListener("ready", (function (doc) {
       this.current = 1;
       this.options;
       this.players;
+      this.activeCount;
       this.ui;
       this.decksCount;
       this.menu = new Menu(this.table, this.gamePlay.new);
@@ -52,6 +53,7 @@ window.addEventListener("ready", (function (doc) {
         players: ['Dealer'].concat(opts.players || ['player-1'])
       };
       this.players = this.options.players.map(name => new Player(name));
+      this.activeCount = this.players.length;
       this.deck = new Deck(this.options.deckCount);
       this.ui = new UI(this);
       this.dealAll();
@@ -64,11 +66,7 @@ window.addEventListener("ready", (function (doc) {
       this.current = 1;
       this.players.map((player,idx) => {
         player.restart();
-        if (player.money == 0) {
-          if (idx == this.current) this.current++;
-          player.skip = true;
-          this.ui.knockout(idx);
-        }
+        if (player.skip && idx == this.current) this.current++;
       });
       this.ui.restart();
       this.dealAll();
@@ -91,9 +89,7 @@ window.addEventListener("ready", (function (doc) {
         } else {
           this.current = 0;
           this.playerHit();
-
           this.ui.getButton('ctrl-bid').disabled = this.ui.checkBids();
-
           this.nextPlayer();
         }
       }, 100);
@@ -185,27 +181,32 @@ window.addEventListener("ready", (function (doc) {
 
     /**
      * After the dealer has his turn, all scores are compared and winnings handed out.
+     * Players with 0 money are knocked out
      */
     endRound() {
-      console.log('round over');
       let dealer = this.players[0],
         playerCount = this.players.length;
 
-      console.log(playerCount);
+      for (let i = 1; i < playerCount; i++) { //skipping dealer
+        let player = this.players[i],
+          money = player.getMoney(dealer.score, dealer.cardCount);
 
-      if (playerCount == 1) {
-        this.endAll();
-      } else {
-        for (let i = 1; i < playerCount; i++) { //skipping dealer
-          let player = this.players[i];
-          if (!player.skip) {
-            let money = player.getMoney(dealer.score, dealer.cardCount);
-            this.ui.setMoney(i, money);
-          }
+        this.ui.setMoney(i, money);
+
+        if (player.money == 0 && !player.skip) {
+          player.skip = true;
+          this.ui.knockout(i);
+          this.activeCount--;
         }
-
-        setTimeout(() => this.restart(), 5000);
       }
+
+      setTimeout(() => {
+        if (this.activeCount == 1) {
+          this.endAll();
+        } else {
+          this.restart();
+        }
+      }, 2000);
     }
 
     /**
@@ -340,7 +341,7 @@ window.addEventListener("ready", (function (doc) {
     }
 
     /**
-     * Builds a deck of cards for the dealer to use. Iterates through [this.cards] decks, 4 suits and 14 cards per suit.
+     * Builds a deck of cards for the dealer to use. Iterates through n = [this.count] decks, 4 suits and 14 cards per suit.
      */
     build() {
       for (let i = 0; i < this.count; i++) {
