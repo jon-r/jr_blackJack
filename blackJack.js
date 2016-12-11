@@ -33,6 +33,8 @@ window.addEventListener("ready", (function (doc) {
       this.current;
       this.options;
       this.players;
+      this.splitHand;
+      this.splitActive;
       this.activeCount;
       this.ui;
       this.decksCount;
@@ -54,6 +56,7 @@ window.addEventListener("ready", (function (doc) {
         deckCount: opts.deckCount || 6,
         players: ['Dealer'].concat(opts.players || ['player-1'])
       };
+      this.splitActive = false;
       this.current = 1;
       this.players = this.options.players.map(name => new Player(name));
       this.activeCount = this.players.length;
@@ -67,6 +70,7 @@ window.addEventListener("ready", (function (doc) {
      */
     restart() {
       this.current = 1;
+      this.splitActive = false;
       this.players.map((player,attr) => {
         player.restart();
         if (player.skip && attr == this.current) this.current++;
@@ -81,13 +85,13 @@ window.addEventListener("ready", (function (doc) {
     dealAll() {
       let dealer = this.ui.playerOutputs[0];
 
-      this.ui.deal(this.current);
+      this.ui.deal(this.current, false);
       ['ctrl-double','ctrl-split','ctrl-hit','ctrl-forfeit','ctrl-stand']
         .forEach(ctrl => this.ui.getButton(ctrl).disabled = true);
 
       setTimeout(() => {
         this.nextPlayer();
-        if (dealer.cardCount < 2) {
+        if (dealer.main.totalCards < 2) {
           this.dealAll();
         } else {
           this.current = 0;
@@ -112,9 +116,6 @@ window.addEventListener("ready", (function (doc) {
           if (!player.skip) player.bid = this.ui.getBid(i);
         }
 
-
-
-
         this.firstDeal();
       }
     }
@@ -135,8 +136,6 @@ window.addEventListener("ready", (function (doc) {
           .forEach(ctrl => this.ui.getButton(ctrl).disabled = false);
       }, 500);
 
-
-
     }
 
     /**
@@ -147,33 +146,44 @@ window.addEventListener("ready", (function (doc) {
       isSplit = isSplit || false;
 
       let card = this.deck.deal(),
-        target = (isSplit) ? this.currentSplit : this.current,
-        result = this.players[target].draw(card);
+        target = this.current,
+        result;
 
+      if (isSplit) {
+        result = this.splitHand.draw(card);
+      } else {
+        result = this.players[target].draw(card);
+      }
 
       if (result.endTurn && target > 0) {
-        if (isSplit) {
-          this.splitStand();
-        } else {
-          this.playerStand();
-        }
+        this.playerStand(isSplit);
       }
-      this.ui.hit(target, card, result.scoreStr);
+
+      this.ui.hit(target, card, result.scoreStr, isSplit);
 
     }
 
     /**
      * Moves clockwise to the next player on the table. When the round reachs the dealer he plays automatically.
      */
-    playerStand() {
-      this.nextPlayer();
+    playerStand(isSplit) {
 
-      if (this.current == 0) {
-        this.ui.getButton('ctrl-hit').disabled = true;
-        this.ui.getButton('ctrl-stand').disabled = true;
-        this.autoPlay();
-      } else {
-        this.firstDeal();
+      if (isSplit && this.players[this.current].score < 21) {
+
+        this.disableSplit();
+
+
+      } else if (!this.splitActive) {
+
+        this.nextPlayer();
+
+        if (this.current == 0) {
+          this.ui.getButton('ctrl-hit').disabled = true;
+          this.ui.getButton('ctrl-stand').disabled = true;
+          this.autoPlay();
+        } else {
+          this.firstDeal();
+        }
       }
     }
 
@@ -190,29 +200,31 @@ window.addEventListener("ready", (function (doc) {
       currPlayer.bid *= 2;
       currOutput.bid = currPlayer.bid;
 
-      this.ui.hit(current, card, result.scoreStr);
+      this.ui.hit(current, card, result.scoreStr, false);
       this.playerStand();
     }
 
     playerSplit() {
-      console.log('split!');
+      this.splitActive = true;
       let current = this.current,
         currPlayer = this.players[current];
 
-      this.ui.splitHand(current);
+      this.ui.splitHand(current, currPlayer.hand);
 
-      let currSplit = new SplitPlayer(current);
+      this.splitHand = new SplitPlayer(currPlayer);
 
-      currSplit.hand = currPlayer.hand.splice(1);
+      ['ctrl-double','ctrl-split','ctrl-forfeit']
+        .forEach(ctrl => this.ui.getButton(ctrl).disabled = true);
 
-/*      delay(() => this.playerHit(),200)
-        .delay(() => this.playerHit(true),200);*/
+      delay(() => this.playerHit(),200)
+        .delay(() => this.playerHit(true),200);
     }
 
-//    splitHit(isSplit) {
-//      let card = this.deck.deal(),
-//        result = this.players[this.current].draw(card, isSplit);
-//    }
+    disableSplit() {
+      this.splitActive = false;
+      this.splitHand.setSplitScore();
+      console.log(this.splitHand.parent);
+    }
 
     /**
      * Forfeits half of the player's bet to stand without winning or losing.
@@ -304,8 +316,8 @@ window.addEventListener("ready", (function (doc) {
     get gamePlay() {
       return {
         new: (opts) => this.newGame(opts),
-        hit: () => this.playerHit(),
-        stand: () => this.playerStand(),
+        hit: () => this.playerHit(this.splitActive),
+        stand: () => this.playerStand(this.splitActive),
         split: () => this.playerSplit(),
         double: () => this.playerDouble(),
         forfeit: () => this.playerForfeit(),
@@ -450,6 +462,7 @@ window.addEventListener("ready", (function (doc) {
      * @returns {Object} card - card with face value and name.
      */
     deal() {
+
       let rng = Math.floor(Math.random() * this.cards.length),
         cardArr = this.cards.splice(rng, 1)[0],
         _0 = cardArr[0],
@@ -480,6 +493,7 @@ window.addEventListener("ready", (function (doc) {
       this.money = 1000;
       this.bid = 0;
       this.score = 0;
+      this.splitScore = 0;
       this.hand = [];
       this.hardAce = true;
       this.skip = false;
@@ -491,6 +505,7 @@ window.addEventListener("ready", (function (doc) {
     restart() {
       this.cardCount = 0;
       this.score = 0;
+      this.splitScore = 0;
       this.hand = [];
       this.bid = 0;
       this.hardAce = true;
@@ -564,16 +579,26 @@ window.addEventListener("ready", (function (doc) {
      */
     getMoney(dlrScore, dlrCount) {
       let odds = 2,
+        score,
         plyrScore = this.score,
+        splitScore = this.splitScore,
         dlrBlackJack = (dlrScore == 21 && dlrCount < 3),
         blackJack = (plyrScore == 21 && this.cardCount < 3);
 
-      if (plyrScore < 22) {
+      if (plyrScore < 22 && splitScore < 22) {
+        score = Math.max(splitScore,plyrScore);
+      } else if (plyrScore > 21 && splitScore < 22) {
+        score = splitScore;
+      } else {
+        score = plyrScore;
+      }
+
+      if (score < 22) {
         if (blackJack && !dlrBlackJack) {
           odds = 1.5;
-        } else if (plyrScore > dlrScore || dlrScore > 21) {
+        } else if (score > dlrScore || dlrScore > 21) {
           odds = 1;
-        } else if (blackJack && dlrBlackJack || plyrScore == dlrScore) {
+        } else if (blackJack && dlrBlackJack || score == dlrScore) {
           odds = 0;
         } else {
           odds = -1;
@@ -593,13 +618,27 @@ window.addEventListener("ready", (function (doc) {
       super();
 
       this.parent = parent;
-/*      this.cardCount = 0;
+      this.cardCount = 0;
       this.score = 0;
       this.hand = [];
-      this.hardAce = true;*/
+      this.hardAce = true;
 
-      console.log(this);
+      this.getParentVals();
     }
+
+    getParentVals() {
+      this.hand = this.parent.hand.splice(0,1);
+
+      this.score = this.hand[0].score;
+      this.parent.score = this.parent.hand[0].score;
+    }
+
+    setSplitScore() {
+      if (this.score < 22) {
+        this.parent.splitScore = this.score;
+      }
+    }
+
   }
 
 
@@ -662,8 +701,14 @@ window.addEventListener("ready", (function (doc) {
         ]),
         output = {
           bid: 500,
-          handCount: 0,
-          cardCount: 0,
+          main: {
+            totalCards: 0,
+            revealedCards: 0,
+          },
+          split: {
+            totalCards: 0,
+            revealedCards: 0,
+          },
           childMap: new Map(),
           goX: 0,
           goY: 0,
@@ -723,11 +768,22 @@ window.addEventListener("ready", (function (doc) {
       for (let i = 0; i < count; i++) {
         let output = outputs[i],
           els = output.childMap,
-          hand = els.get('hand');
+          hand = els.get('hand'),
+          parent = hand.parentElement;
 
-        output.handCount = 0;
-        output.cardCount = 0;
+        ['main','split'].forEach(counts => {
+          output[counts].totalCards = 0;
+          output[counts].revealedCards = 0;
+        });
         while (hand.firstChild) hand.removeChild(hand.firstChild);
+
+        if (els.has('split-hand')) {
+          ['split-hand', 'split-score'].forEach(split => {
+            let splitEl = els.get(split);
+            parent.removeChild(splitEl);
+            els.delete(split);
+          });
+        }
 
         els.get('score').textContent = '';
 
@@ -763,7 +819,7 @@ window.addEventListener("ready", (function (doc) {
      * splits the player's hand into two
      * @param {number} current - index of the current active player
      */
-    splitHand(current) {
+    splitHand(current, cards) {
       let active = this.playerOutputs[current],
         els = active.childMap,
         parent = els.get('bid').parentElement;
@@ -777,7 +833,13 @@ window.addEventListener("ready", (function (doc) {
         parent.insertBefore(splitEl,els.get(split));
       });
 
+      ['main','split'].forEach(counts => {
+        active[counts].totalCards = 1;
+        active[counts].revealedCards = 1;
+      });
       els.get('split-hand').appendChild(els.get('hand').firstChild);
+      els.get('split-score').textContent = cards[0].score;
+      els.get('score').textContent = cards[1].score;
     //  bid.parentElement.insertBefore(splitHand,bid);
     }
 
@@ -866,17 +928,19 @@ window.addEventListener("ready", (function (doc) {
      * visually adds a card to the player's hand
      * @param {number} current - target player
      */
-    deal(current) {
-      let active = this.playerOutputs[current],
-        x = active.goX - (active.cardCount * 20),
+    deal(current, isSplit) {
+      let hand = isSplit ? 'split-hand' : 'hand',
+        count = isSplit ? 'split' : 'main',
+        active = this.playerOutputs[current],
+        x = active.goX - (active[count].revealedCards * 20),
         y = active.goY,
         newCard = newEl('div', [
           ['class', 'card draw blank'],
           ['style', {transform:`translate(${x}px, ${y}px)`}]
         ]);
 
-      active.cardCount++;
-      active.childMap.get('hand').appendChild(newCard);
+      active[count].totalCards++;
+      active.childMap.get(hand).appendChild(newCard);
       window.getComputedStyle(newCard).transform;
       newCard.style.transform = '';
     }
@@ -887,18 +951,25 @@ window.addEventListener("ready", (function (doc) {
      * @param {object} card     player's dealt card
      * @param {string} scoreStr players new score display
      */
-    hit(current, card, scoreStr) {
+    hit(current, card, scoreStr, isSplit) {
       let active = this.playerOutputs[current],
-        nth = active.handCount;
+        score = isSplit ? 'split-score' : 'score',
+        count = isSplit ? 'split' : 'main',
+        nth = active[count].revealedCards,
+        cards = active[count].totalCards,
+        scoreEl = active.childMap.get(score);
 
-      active.childMap.get('score').textContent = scoreStr;
-      if (nth < active.cardCount) {
-        active.handCount++;
-        this.reveal(current,nth,card);
+      scoreEl.textContent = scoreStr;
+
+      if (nth < cards) {
+        active[count].revealedCards++;
+
+        this.reveal(current,nth,card,isSplit);
       } else {
-        delay(() => this.deal(current), 0)
-        .delay(() => this.hit(current,card,scoreStr), 200);
+        delay(() => this.deal(current,isSplit), 0)
+        .delay(() => this.hit(current,card,scoreStr,isSplit), 200);
       }
+
     }
 
     /**
@@ -907,9 +978,10 @@ window.addEventListener("ready", (function (doc) {
      * @param {number} nth     - index of card to be revealed
      * @param {object} card    - what the card turns out to be
      */
-    reveal(current,nth,card) {
+    reveal(current,nth,card,isSplit) {
       let active = this.playerOutputs[current],
-        flipped = active.childMap.get('hand').getElementsByClassName('card')[nth];
+        hand = isSplit ? 'split-hand' : 'hand',
+        flipped = active.childMap.get(hand).getElementsByClassName('card')[nth];
 
       flipped.className = 'card blank';
 
@@ -929,9 +1001,6 @@ window.addEventListener("ready", (function (doc) {
     }
 
   }
-
-
-
 
   /* - misc functions ---------------------------------------------------- */
 
