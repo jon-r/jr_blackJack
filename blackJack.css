@@ -69,6 +69,10 @@ html {
 }
 */
 
+.playerBet {
+  display: block;
+}
+
 .intro-form {
   background-color: grey;
   padding: 10px;
@@ -93,6 +97,18 @@ html {
 .player-3.player-frame {left: 40%}
 .player-4.player-frame {left: 60%}
 .player-5.player-frame {left: 80%}
+
+.hand {
+  display: inline-block;
+}
+
+.split {
+  animation: pull 600ms forwards;
+}
+
+@keyframes pull {
+  to { transform: translateX(-200%)};
+}
 
 .card {
   display: inline-block;

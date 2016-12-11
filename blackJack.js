@@ -1,11 +1,16 @@
 /*
 TO DO
 
-feature
-- try to add remaining player options (split? forfeit, etc)
+optimise
+- new 'update player ui' function
+
+side rules
+- disable all side rules after first draw (can only be used once)
+- splitting: second set of 'hit/stand/score functions?
 
 visual
 - add random variation to the dealt cards
+- shuffling ui for split?
 - blackjack table text
 - general prettyness
 
@@ -25,7 +30,7 @@ window.addEventListener("ready", (function (doc) {
       let query = board || '[data-blackjack]';
 
       this.table = doc.querySelector(query);
-      this.current = 1;
+      this.current;
       this.options;
       this.players;
       this.activeCount;
@@ -49,6 +54,7 @@ window.addEventListener("ready", (function (doc) {
         deckCount: opts.deckCount || 6,
         players: ['Dealer'].concat(opts.players || ['player-1'])
       };
+      this.current = 1;
       this.players = this.options.players.map(name => new Player(name));
       this.activeCount = this.players.length;
       this.deck = new Deck(this.options.deckCount);
@@ -61,9 +67,9 @@ window.addEventListener("ready", (function (doc) {
      */
     restart() {
       this.current = 1;
-      this.players.map((player,idx) => {
+      this.players.map((player,attr) => {
         player.restart();
-        if (player.skip && idx == this.current) this.current++;
+        if (player.skip && attr == this.current) this.current++;
       });
       this.ui.restart();
       this.dealAll();
@@ -76,8 +82,8 @@ window.addEventListener("ready", (function (doc) {
       let dealer = this.ui.playerOutputs[0];
 
       this.ui.deal(this.current);
-      this.ui.getButton('ctrl-hit').disabled = true;
-      this.ui.getButton('ctrl-stand').disabled = true;
+      ['ctrl-double','ctrl-split','ctrl-hit','ctrl-forfeit','ctrl-stand']
+        .forEach(ctrl => this.ui.getButton(ctrl).disabled = true);
 
       setTimeout(() => {
         this.nextPlayer();
@@ -85,7 +91,7 @@ window.addEventListener("ready", (function (doc) {
           this.dealAll();
         } else {
           this.current = 0;
-          this.playerHit();
+          this.playerHit(false);
           this.ui.getButton('ctrl-bid').disabled = this.ui.checkBids();
           this.nextPlayer();
         }
@@ -107,8 +113,7 @@ window.addEventListener("ready", (function (doc) {
         }
 
 
-        this.ui.getButton('ctrl-hit').disabled = false;
-        this.ui.getButton('ctrl-stand').disabled = false;
+
 
         this.firstDeal();
       }
@@ -116,13 +121,21 @@ window.addEventListener("ready", (function (doc) {
 
     /**
      * Reveals the players first two cards.
+     * Also enables the controls for the player's turn
      */
     firstDeal() {
       let currPlayer = this.players[this.current];
-      delay(() => this.playerHit(), 500)
-        .delay(() => this.playerHit(), 500);
+        //canDouble = currPlayer.bid * 2 > currPlayer.money;
+      delay(() => this.playerHit(false), 500)
+      .delay(() => this.playerHit(false), 500)
+      .delay(() => {
+        this.ui.getButton('ctrl-split').disabled = false; //(!currPlayer.canSplit() || !currPlayer.canDouble());
+        this.ui.getButton('ctrl-double').disabled = !currPlayer.canDouble(); //canDouble;
+        ['ctrl-hit','ctrl-forfeit','ctrl-stand']
+          .forEach(ctrl => this.ui.getButton(ctrl).disabled = false);
+      }, 500);
 
-      this.ui.getButton('ctrl-double').disabled = currPlayer.bid * 2 > currPlayer.money;
+
 
     }
 
@@ -130,13 +143,23 @@ window.addEventListener("ready", (function (doc) {
      * Reveals the current players card, and updates their score to the player object & UI.
      * If the player reaches 21 points or more, they automatically stand.
      */
-    playerHit() {
+    playerHit(isSplit) {
+      isSplit = isSplit || false;
+
       let card = this.deck.deal(),
-        result = this.players[this.current].draw(card);
+        target = (isSplit) ? this.currentSplit : this.current,
+        result = this.players[target].draw(card);
 
-      this.ui.hit(this.current, card, result.scoreStr);
 
-      if (result.endTurn && this.current > 0) this.playerStand();
+      if (result.endTurn && target > 0) {
+        if (isSplit) {
+          this.splitStand();
+        } else {
+          this.playerStand();
+        }
+      }
+      this.ui.hit(target, card, result.scoreStr);
+
     }
 
     /**
@@ -158,14 +181,49 @@ window.addEventListener("ready", (function (doc) {
      * Doubles the player's bid to draw a single card and end their turn.
      */
     playerDouble() {
-      let current = this.players[this.current],
+      let current = this.current,
+        currPlayer = this.players[current],
+        currOutput = this.ui.playerOutputs[current],
         card = this.deck.deal(),
-        result = current.draw(card);
+        result = currPlayer.draw(card);
 
-      current.bid *= 2;
+      currPlayer.bid *= 2;
+      currOutput.bid = currPlayer.bid;
 
-      this.ui.playerOutputs[this.current].bid = current.bid;
-      this.ui.hit(this.current, card, result.scoreStr);
+      this.ui.hit(current, card, result.scoreStr);
+      this.playerStand();
+    }
+
+    playerSplit() {
+      console.log('split!');
+      let current = this.current,
+        currPlayer = this.players[current];
+
+      this.ui.splitHand(current);
+
+      let currSplit = new SplitPlayer(current);
+
+      currSplit.hand = currPlayer.hand.splice(1);
+
+/*      delay(() => this.playerHit(),200)
+        .delay(() => this.playerHit(true),200);*/
+    }
+
+//    splitHit(isSplit) {
+//      let card = this.deck.deal(),
+//        result = this.players[this.current].draw(card, isSplit);
+//    }
+
+    /**
+     * Forfeits half of the player's bet to stand without winning or losing.
+     */
+    playerForfeit() {
+      let current = this.players[this.current];
+
+      current.money -= current.bid/2;
+      current.bid = 0;
+
+      this.ui.setMoney(this.current, current.money);
 
       this.playerStand();
     }
@@ -176,8 +234,6 @@ window.addEventListener("ready", (function (doc) {
     nextPlayer() {
       let current = this.current,
         players = this.players;
-
-
 
       this.current = (current + 1) % (players.length);
 
@@ -250,7 +306,9 @@ window.addEventListener("ready", (function (doc) {
         new: (opts) => this.newGame(opts),
         hit: () => this.playerHit(),
         stand: () => this.playerStand(),
+        split: () => this.playerSplit(),
         double: () => this.playerDouble(),
+        forfeit: () => this.playerForfeit(),
         menu: () => this.menu.toggleForm(),
         bid: () => this.placeBids()
       };
@@ -277,9 +335,9 @@ window.addEventListener("ready", (function (doc) {
      * @param {object} table - table element
      */
     build(table) {
-      let form = table.parentElement.insertBefore(newEl('form', {
-          class : 'intro-form'
-        }), table),
+      let form = table.parentElement.insertBefore(newEl('form', [
+          ['class', 'intro-form']
+        ]), table),
         rows = new Map([
           ['decks', ['Deck Count', 'number', 6]],
           ['p-1', ['Player 1', 'text', 'Aaron']],
@@ -291,26 +349,26 @@ window.addEventListener("ready", (function (doc) {
         ]);
 
       for (let [name,arr] of rows) {
-        let newLabel = newEl('label', {
-            class : `form-label label-${name} label-${arr[1]}`,
-            for : `input-${name}`,
-            text: arr[0]
-          }),
-          newInput = newEl('input', {
-            class : `form-input input-${name} input-${arr[1]}`,
-            name  : name,
-            type  : arr[1],
-            placeholder : arr[0],
-            id    : `input-${name}`,
-            value : arr[2] || '',
-            min : arr[1] == 'number' ? 1 : ''
-          });
+        let newLabel = newEl('label', [
+            ['class', `form-label label-${name} label-${arr[1]}`],
+            ['for', `input-${name}`],
+            ['text', arr[0]]
+          ]),
+          newInput = newEl('input', [
+            ['class', `form-input input-${name} input-${arr[1]}`],
+            ['name', name],
+            ['type', arr[1]],
+            ['placeholder', arr[0]],
+            ['id', `input-${name}`],
+            ['value', arr[2] || ''],
+            ['min', arr[1] == 'number' ? 1 : '']
+          ]);
         [newLabel,newInput].forEach(el => form.appendChild(el));
         if (arr[1] == 'text') {
-          let btn = newEl('button', {
-            class: 'clear-player',
-            text: 'X'
-          });
+          let btn = newEl('button', [
+            ['class', 'clear-player'],
+            ['text', 'X']
+          ]);
           btn.addEventListener('click', (e) => {
             e.preventDefault();
             e.target.nextElementSibling.value = '';
@@ -481,6 +539,23 @@ window.addEventListener("ready", (function (doc) {
       return {scoreStr,endTurn};
     }
 
+
+    /**
+     * checks if the two cards match face value, and can be split
+     * @returns {boolean} the hand can split
+     */
+    canSplit() {
+      return this.hand.length < 3 && (this.hand[1].score == this.hand[0].score);
+    }
+
+    /**
+     * checks if the player has enough money to double his bet
+     * @returns {boolean} the bid can be doubled
+     */
+    canDouble() {
+      return this.bid * 2 <= this.money;
+    }
+
     /**
      * calculates the betting return to the player
      * @param   {number} dlrScore - the score of the dealer this turn
@@ -513,6 +588,21 @@ window.addEventListener("ready", (function (doc) {
     }
   }
 
+  class SplitPlayer extends Player {
+    constructor(parent) {
+      super();
+
+      this.parent = parent;
+/*      this.cardCount = 0;
+      this.score = 0;
+      this.hand = [];
+      this.hardAce = true;*/
+
+      console.log(this);
+    }
+  }
+
+
   /** class UI represents the in game user interface and visuals */
   class UI {
     /**
@@ -534,14 +624,15 @@ window.addEventListener("ready", (function (doc) {
      * @returns {object} panel - the game controls html element
      */
     buildPanel() {
-      let panel = newEl('div', {'class' : 'control-box' });
+      let panel = newEl('div', [['class', 'control-box' ]]);
 
-      ['bid','hit', 'stand', 'double', 'menu'].forEach(name => {
-        const newCtrl = newEl('button', {
-          'class' : `ctrl ctrl-${name}`,
-          'text' : name,
-          'data-ctrl' : name
-        });
+      ['bid','hit','stand','double','forfeit','split','menu']
+      .forEach(name => {
+        const newCtrl = newEl('button', [
+          ['class', `ctrl ctrl-${name}`],
+          ['text', name],
+          ['data-ctrl', name]
+        ]);
         panel.appendChild(newCtrl);
       });
 
@@ -565,15 +656,15 @@ window.addEventListener("ready", (function (doc) {
      * @param   {number} idx       - index of player in the array of players
      * @returns {object} player    - in game player html element
      */
-    buildPlayer(playerObj,idx) {
-      let parentEl = newEl('div', {
-          'class': `player-frame player-${idx}`
-        }),
+    buildPlayer(playerObj, idx) {
+      let parentEl = newEl('div', [
+          ['class',`player-frame player-${idx}`]
+        ]),
         output = {
           bid: 500,
+          handCount: 0,
           cardCount: 0,
-          childEls: {},
-          hand: [],
+          childMap: new Map(),
           goX: 0,
           goY: 0,
           skip: false,
@@ -588,31 +679,32 @@ window.addEventListener("ready", (function (doc) {
 
       for (let [key,arr] of vals) {
         if (idx > 0 || arr[1]) {
-          let thisEl = newEl('div', {
-            'class' : key,
-            'text' : arr[0]
-          });
+          let thisEl = newEl('div', [
+            ['class', key],
+            ['text', arr[0]]
+          ]);
           parentEl.appendChild(thisEl);
-          output.childEls[key] = thisEl;
+          output.childMap.set(key,thisEl);
         }
       }
 
       if (idx > 0) {
-        let thisBid = newEl('input', {
-          'type' : 'number',
-          'class' : 'playerBet',
-          'min' : Math.min(100,playerObj.money),
-          'max' : playerObj.money,
-          'value' : output.bid
-        });
+        let thisBid = newEl('input', [
+          ['type', 'number'],
+          ['class', 'playerBet'],
+          ['min', Math.min(100,playerObj.money)],
+          ['max', playerObj.money],
+          ['value', output.bid]
+        ]);
 
         thisBid.addEventListener('change', (e) => {
           let check = this.checkBid(e.target);
           this.getButton('ctrl-bid').disabled = check;
         });
-        output.childEls.bid = thisBid;
+        output.childMap.set('bid',thisBid);
         parentEl.appendChild(thisBid);
       }
+
 
       this.table.appendChild(parentEl);
       output.goX = this.table.offsetWidth - parentEl.offsetLeft;
@@ -630,19 +722,26 @@ window.addEventListener("ready", (function (doc) {
 
       for (let i = 0; i < count; i++) {
         let output = outputs[i],
-          els = output.childEls,
-          hand = els.hand;
+          els = output.childMap,
+          hand = els.get('hand');
 
-        output.hand = [];
+        output.handCount = 0;
         output.cardCount = 0;
-        if (i > 0) {
-          let curMoney = els.money.textContent;
-          els.bid.disabled = false;
-          els.bid.setAttribute("max",curMoney);
-          els.bid.setAttribute("min",Math.min(100,curMoney));
-        }
-        els.score.textContent = '0';
         while (hand.firstChild) hand.removeChild(hand.firstChild);
+
+        els.get('score').textContent = '';
+
+        if (i > 0) {
+          let curMoney = els.get('money').textContent,
+            bid = els.get('bid');
+
+          bid.disabled = false;
+          setAttributes(bid, [
+            ['max', curMoney],
+            ['min', Math.min(100,curMoney)]
+          ]);
+
+        }
       }
     }
 
@@ -654,10 +753,32 @@ window.addEventListener("ready", (function (doc) {
       let active = this.playerOutputs[current];
 
       this.playerOutputs.forEach(player => {
-        player.childEls.title.classList.remove('active');
+        player.childMap.get('title').classList.remove('active');
       });
 
-      active.childEls.title.classList.add('active');
+      active.childMap.get('title').classList.add('active');
+    }
+
+    /**
+     * splits the player's hand into two
+     * @param {number} current - index of the current active player
+     */
+    splitHand(current) {
+      let active = this.playerOutputs[current],
+        els = active.childMap,
+        parent = els.get('bid').parentElement;
+
+      ['hand', 'score'].forEach(split => {
+        let splitEl = newEl('div', [
+          ['class', `${split} split`]
+        ]);
+
+        els.set(`split-${split}`, splitEl);
+        parent.insertBefore(splitEl,els.get(split));
+      });
+
+      els.get('split-hand').appendChild(els.get('hand').firstChild);
+    //  bid.parentElement.insertBefore(splitHand,bid);
     }
 
     /**
@@ -667,10 +788,9 @@ window.addEventListener("ready", (function (doc) {
     knockout(current) {
       let active = this.playerOutputs[current];
 
-      active.childEls.title.classList.add('inactive');
-      active.childEls.bid.value = 0;
+      active.childMap.get('title').classList.add('inactive');
+      active.childMap.get('bid').value = 0;
       active.skip = true;
-
     }
 
     /**
@@ -679,8 +799,7 @@ window.addEventListener("ready", (function (doc) {
      * @returns {number} value - the bid amount
      */
     getBid(current) {
-      let active = this.playerOutputs[current],
-        bidInput = active.childEls.bid;
+      let bidInput = this.playerOutputs[current].childMap.get('bid');
 
       bidInput.disabled = true;
 
@@ -715,8 +834,7 @@ window.addEventListener("ready", (function (doc) {
 
       for (let i = 1; i < count; i++) {
         let plyr = players[i];
-        if (!plyr.skip && this.checkBid(plyr.childEls.bid)) out++;
-
+        if (!plyr.skip && this.checkBid(plyr.childMap.get('bid'))) out++;
       }
       return out > 0;
     }
@@ -727,18 +845,19 @@ window.addEventListener("ready", (function (doc) {
      * @param {number} money   - players new score at the end of the round
      */
     setMoney(current, money) {
-      let activeEls = this.playerOutputs[current].childEls,
-        moneyDiff = money - activeEls.money.textContent,
+      let activeEls = this.playerOutputs[current].childMap,
+        moneyDiff = money - activeEls.get('money').textContent,
+        diffEl = activeEls.get('difference'),
         diff;
 
       if (moneyDiff !== 0) {
         diff = moneyDiff > 0 ? 'pos' : 'neg';
-        activeEls.difference.textContent = moneyDiff;
-        activeEls.difference.classList.add(`show-${diff}`);
-        activeEls.money.textContent = money;
+        diffEl.textContent = moneyDiff;
+        diffEl.classList.add(`show-${diff}`);
+        activeEls.get('money').textContent = money;
 
         setTimeout(() => {
-          activeEls.difference.classList.remove(`show-${diff}`);
+          diffEl.classList.remove(`show-${diff}`);
         }, 5000);
       }
     }
@@ -751,15 +870,13 @@ window.addEventListener("ready", (function (doc) {
       let active = this.playerOutputs[current],
         x = active.goX - (active.cardCount * 20),
         y = active.goY,
-        newCard = newEl('div', {
-          'class': 'card draw blank',
-          'style': {
-            transform:`translate(${x}px, ${y}px)`
-          }
-        });
+        newCard = newEl('div', [
+          ['class', 'card draw blank'],
+          ['style', {transform:`translate(${x}px, ${y}px)`}]
+        ]);
 
       active.cardCount++;
-      active.childEls.hand.appendChild(newCard);
+      active.childMap.get('hand').appendChild(newCard);
       window.getComputedStyle(newCard).transform;
       newCard.style.transform = '';
     }
@@ -772,11 +889,11 @@ window.addEventListener("ready", (function (doc) {
      */
     hit(current, card, scoreStr) {
       let active = this.playerOutputs[current],
-        nth = active.hand.length;
+        nth = active.handCount;
 
-      active.childEls.score.textContent = scoreStr;
+      active.childMap.get('score').textContent = scoreStr;
       if (nth < active.cardCount) {
-        active.hand.push(card);
+        active.handCount++;
         this.reveal(current,nth,card);
       } else {
         delay(() => this.deal(current), 0)
@@ -792,7 +909,7 @@ window.addEventListener("ready", (function (doc) {
      */
     reveal(current,nth,card) {
       let active = this.playerOutputs[current],
-        flipped = active.childEls.hand.getElementsByClassName('card')[nth];
+        flipped = active.childMap.get('hand').getElementsByClassName('card')[nth];
 
       flipped.className = 'card blank';
 
@@ -808,17 +925,18 @@ window.addEventListener("ready", (function (doc) {
      */
     setCard(flipped,cardObj) {
       flipped.className = `card ${cardObj.suit}`;
-      flipped.appendChild(newEl('span', {'text': cardObj.face }));
+      flipped.appendChild(newEl('span', [['text', cardObj.face]]));
     }
 
   }
 
 
+
+
   /* - misc functions ---------------------------------------------------- */
 
   /**
-   * creates a new element object, with predefined attributes
-   * http://stackoverflow.com/a/12274886
+   * creates a new element object
    * @param   {string} el    - element type
    * @param   {Array}  attrs - element attributes
    * @returns {object} new element in the DOM
@@ -826,25 +944,37 @@ window.addEventListener("ready", (function (doc) {
   function newEl(el,attrs) {
     let element = doc.createElement(el);
 
-    for (let idx in attrs) {
-      if ((idx === 'styles' || idx === 'style') && typeof attrs[idx] === 'object') {
-        for (let prop in attrs[idx]) {
-          element.style[prop] = attrs[idx][prop];
+    return setAttributes(element,attrs);
+  }
+
+  /**
+   * sets attributes of an object
+   * http://stackoverflow.com/a/12274886
+   * @param   {object} el    - element node
+   * @param   {Array}  attrs - element attributes
+   * @returns {object} updates element
+   */
+  function setAttributes(el,attrs) {
+    let attrMap = new Map(attrs);
+
+    for (let [attr,val] of attrMap) {
+      if ((attr === 'styles' || attr === 'style') && typeof val === 'object') {
+        for (let prop in val) {
+          el.style[prop] = val[prop];
         }
-      } else if (idx === 'text') {
-        element.textContent = attrs[idx];
+      } else if (attr === 'text') {
+        el.textContent = val;
       } else {
-        element.setAttribute(idx, attrs[idx]);
+        el.setAttribute(attr, val);
       }
     }
 
-    return element;
+    return el;
   }
-
-  //http://stackoverflow.com/a/6921279
 
   /**
    * chains functions to run in sequence, with preset delay
+   * http://stackoverflow.com/a/6921279
    * @param   {function} fn - function to run
    * @param   {time}     t - delay in ms before performing function
    * @returns {*}         self
