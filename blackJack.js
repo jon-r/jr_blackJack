@@ -59,7 +59,7 @@ window.addEventListener("ready", (function (doc) {
       this.activeCount = this.players.length;
       this.deck = new Deck(this.options.deckCount);
       this.ui = new UI(this);
-      this.dealAll();
+      this.ui.getButton('ctrl-bid').disabled = this.ui.checkBids();
     }
 
     /**
@@ -72,7 +72,8 @@ window.addEventListener("ready", (function (doc) {
         if (player.skip && idx == this.current) this.current++;
       });
       this.ui.restart();
-      this.dealAll();
+      //this.dealAll();
+      this.ui.getButton('ctrl-bid').disabled = this.ui.checkBids();
     }
 
     /**
@@ -81,21 +82,25 @@ window.addEventListener("ready", (function (doc) {
     dealAll() {
       let dealer = this.ui.playerOutputs[0];
 
-      this.ui.deal(this.current, false);
+      this.ui.deal(this.current);
+
+
       ['ctrl-double','ctrl-hit','ctrl-forfeit','ctrl-stand']
         .forEach(ctrl => this.ui.getButton(ctrl).disabled = true);
 
       setTimeout(() => {
-        this.nextPlayer();
+
         if (dealer.totalCards < 2) {
+          this.playerHit();
+          this.nextPlayer();
           this.dealAll();
         } else {
           this.current = 0;
-          this.playerHit();
-          this.ui.getButton('ctrl-bid').disabled = this.ui.checkBids();
+          //this.playerHit();
           this.nextPlayer();
+          this.firstDeal();
         }
-      }, 100);
+      }, 300);
     }
 
     /**
@@ -112,7 +117,8 @@ window.addEventListener("ready", (function (doc) {
           if (!player.skip) player.bid = this.ui.getBid(i);
         }
 
-        this.firstDeal();
+        //this.firstDeal();
+        this.dealAll();
       }
     }
 
@@ -123,13 +129,13 @@ window.addEventListener("ready", (function (doc) {
     firstDeal() {
       let currPlayer = this.players[this.current];
         //canDouble = currPlayer.bid * 2 > currPlayer.money;
-      delay(() => this.playerHit(), 500)
+/*      delay(() => this.playerHit(), 500)
       .delay(() => this.playerHit(), 500)
-      .delay(() => {
-        this.ui.getButton('ctrl-double').disabled = !currPlayer.canDouble(); //canDouble;
-        ['ctrl-hit','ctrl-forfeit','ctrl-stand']
-          .forEach(ctrl => this.ui.getButton(ctrl).disabled = false);
-      }, 500);
+      .delay(() => {*/
+      this.ui.getButton('ctrl-double').disabled = !currPlayer.canDouble(); //canDouble;
+      ['ctrl-hit','ctrl-forfeit','ctrl-stand']
+        .forEach(ctrl => this.ui.getButton(ctrl).disabled = false);
+      //}, 500);
 
     }
 
@@ -208,7 +214,7 @@ window.addEventListener("ready", (function (doc) {
 
       this.current = (current + 1) % (players.length);
 
-      if (players[this.current].skip) {
+      if (players[this.current].skip || players[this.current].score > 20) {
         this.nextPlayer();
       } else {
         this.ui.setActive(this.current);
@@ -485,7 +491,6 @@ window.addEventListener("ready", (function (doc) {
 
       if (firstScore && thisScore == 21) {
         scoreStr = `BlackJack ${thisScore}`;
-        endTurn = true;
 
       } else if (softAce && thisScore < 21) {
         scoreStr = `Soft ${thisScore}`;
@@ -493,7 +498,6 @@ window.addEventListener("ready", (function (doc) {
 
       } else if (thisScore == 21) {
         scoreStr = thisScore;
-        endTurn = true;
 
       } else if (thisScore > 21 && !this.hardAce) {
         scoreStr = this.score = thisScore - 10;
