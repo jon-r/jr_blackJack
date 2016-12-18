@@ -96,7 +96,6 @@ window.addEventListener("ready", (function (doc) {
           this.dealAll();
         } else {
           this.current = 0;
-          //this.playerHit();
           this.nextPlayer();
           this.firstDeal();
         }
@@ -117,7 +116,6 @@ window.addEventListener("ready", (function (doc) {
           if (!player.skip) player.bid = this.ui.getBid(i);
         }
 
-        //this.firstDeal();
         this.dealAll();
       }
     }
@@ -128,15 +126,9 @@ window.addEventListener("ready", (function (doc) {
      */
     firstDeal() {
       let currPlayer = this.players[this.current];
-        //canDouble = currPlayer.bid * 2 > currPlayer.money;
-/*      delay(() => this.playerHit(), 500)
-      .delay(() => this.playerHit(), 500)
-      .delay(() => {*/
       this.ui.getButton('ctrl-double').disabled = !currPlayer.canDouble(); //canDouble;
       ['ctrl-hit','ctrl-forfeit','ctrl-stand']
         .forEach(ctrl => this.ui.getButton(ctrl).disabled = false);
-      //}, 500);
-
     }
 
     /**
@@ -148,8 +140,6 @@ window.addEventListener("ready", (function (doc) {
       let card = this.deck.deal(),
         target = this.current,
         result = this.players[target].draw(card);
-
-
 
       if (result.endTurn && target > 0) {
         this.playerStand();
@@ -624,18 +614,18 @@ window.addEventListener("ready", (function (doc) {
           skip: false,
         },
         vals = new Map([
-          ['score', ['0', true]],
-          ['title', [playerObj.name, true]],
-          ['money', [playerObj.money]],
-          ['difference', ['0']],
-          ['hand', ['', true]]
+          ['title', ['h3', playerObj.name, true]],
+          ['money', ['h5', playerObj.money]],
+          ['difference', ['span','0']],
+          ['hand', ['div','', true]],
+          ['score', ['span', '0', true]],
         ]);
 
       for (let [key,arr] of vals) {
-        if (idx > 0 || arr[1]) {
-          let thisEl = newEl('div', [
+        if (idx > 0 || arr[2]) {
+          let thisEl = newEl(arr[0], [
             ['class', key],
-            ['text', arr[0]]
+            ['text', arr[1]]
           ]);
           parentEl.appendChild(thisEl);
           output.childMap.set(key,thisEl);
@@ -850,7 +840,7 @@ window.addEventListener("ready", (function (doc) {
 
       delay(() => flipped.style.transform = 'translateY(-80px) rotateX(-90deg)', 0)
       .delay(() => this.setCard(flipped,card),150)
-      .delay(() => flipped.style.transform = '', 150);
+      .delay(() => flipped.style.transform = transformJiggle(10), 150);
     }
 
     /**
@@ -866,6 +856,21 @@ window.addEventListener("ready", (function (doc) {
   }
 
   /* - misc functions ---------------------------------------------------- */
+
+  /**
+   * adds a natural variance to the dealt hands
+   * @param {number} scale = The scale of the jiggling
+   * @returns {string} the transform property value;
+   */
+  function transformJiggle(scale) {
+    let nudgeX,
+      nudgeY,
+      rotate;
+
+    [nudgeX,nudgeY,rotate] = [0,0,0].map(() => (Math.random() - 0.5) * scale);
+
+    return `translate(${nudgeX}px,${nudgeY}px) rotate(${rotate}deg)`;
+  }
 
   /**
    * creates a new element object

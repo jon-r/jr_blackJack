@@ -1,29 +1,99 @@
-*,*:before,*:after {
-  box-sizing: border-box;
-}
+/*! minireset.css v0.0.2 | MIT License | github.com/jgthms/minireset.css */html,body,p,ol,ul,li,dl,dt,dd,blockquote,figure,fieldset,legend,textarea,pre,iframe,hr,h1,h2,h3,h4,h5,h6{margin:0;padding:0}h1,h2,h3,h4,h5,h6{font-size:100%;font-weight:normal}ul{list-style:none}button,input,select,textarea{margin:0}html{box-sizing:border-box}*,*:before,*:after{box-sizing:inherit}img{height:auto;max-width:100%}
+
+/* -- type ------------------------------------------------------------------ */
 
 html {
-
   font: 16px georgia, serif;
+  color: #dec549;
 }
+
+/* -- table ----------------------------------------------------------------- */
 
 .table {
-  background: #549a54;
+  background: url(table.min.svg) center/contain no-repeat;
   padding: 20px;
-  border:solid 4px brown;
-  width:100%;
-  height: 400px;
-  max-width: 800px;
-  margin:0 auto;
+  border: solid 1px fuchsia;
+  width: 1075px;
+  height: 700px;
+  margin: 0 auto;
   position: relative;
-
 }
 
+/* -- options menu ---------------------------------------------------------- */
+
+.intro-form {
+  background-color: grey;
+  padding: 10px;
+}
+
+.intro-form.inactive {
+  opacity:0;
+}
+
+
+/* -- control menu ---------------------------------------------------------- */
 
 .control-box {
   position: absolute;
   top: 100%;
-/*  left: -120px;*/
+}
+
+/* -- players --------------------------------------------------------------- */
+
+.player-frame {
+  position: absolute;
+}
+
+.player-0.player-frame {
+  top: 8%;
+  left: 48%;
+}
+.player-1.player-frame {
+  top: 37%;
+  left: 10%;
+}
+.player-2.player-frame {
+  top: 57%;
+  left: 27%;
+}
+.player-3.player-frame {
+  top: 64%;
+  left: 48%;
+}
+.player-4.player-frame {
+  top: 57%;
+  left: 69%;
+}
+.player-5.player-frame {
+  top: 37%;
+  left: 86%;
+}
+
+.title {
+  font-size: 1.3rem;
+}
+
+.title.active {
+  color: white;
+}
+
+.title.active::before {
+  content: '➤';
+  position: absolute;
+  left: -1.1em;
+  animation: enter 0.5s ease-out 0.5s backwards;
+}
+
+@keyframes enter {
+  from { opacity: 0; transform: translateX(-100%)}
+}
+
+
+.money {
+  font-size: 1.1rem;
+}
+.money::before {
+  content: '£';
 }
 
 .difference {
@@ -33,7 +103,7 @@ html {
 .difference.show-pos,
 .difference.show-neg {
   opacity: 1;
-  animation: fade 2000ms ease-out 2000ms forwards;
+  animation: fade 2s ease-out 2s forwards;
 }
 
 @keyframes fade {
@@ -50,96 +120,55 @@ html {
   content:"+";
 }
 
-.invalid {
+.score {
+  position: absolute;
+  text-align: right;
+  right: calc(100% + 10px);
+  top: 70px;
+  color: white;
+}
+
+.playerBet.invalid {
   color: red;
 }
 
 
-/*
-.ctrl {
-  border: solid 2px;
-  border-radius: 10px;
-  padding: 5px;
-  width:100px;
-  height: 36px;
-  display: block;
-  text-align: center;
-  margin: 3px;
-  background: #dedede;
-}
-*/
 
-.playerBet {
-  display: block;
-}
 
-.intro-form {
-  background-color: grey;
-  padding: 10px;
-}
 
-.intro-form.inactive {
-  opacity:0;
-}
-
-.title.active {
-  color: white;
-}
-
-.player-frame {
-  position: absolute;
-  top:220px;
-}
-
-.player-0.player-frame {top: 10px}
-/*.player-1.player-frame {left: 0%}*/
-.player-2.player-frame {left: 20%}
-.player-3.player-frame {left: 40%}
-.player-4.player-frame {left: 60%}
-.player-5.player-frame {left: 80%}
-
-.hand {
-  display: inline-block;
-}
-
-.split {
-  animation: pull 600ms forwards;
-}
-
-@keyframes pull {
-  to { transform: translateX(-200%)};
-}
+/* -- cards ----------------------------------------------------------------- */
 
 .card {
   display: inline-block;
   width: 50px;
   height: 70px;
   background: white;
-  margin-right: -30px;
+  margin-right: -20px;
   border-radius: 3px;
   padding: 2px;
   overflow: hidden;
   font-weight: bold;
   position: relative;
   transition: transform 150ms ease;
+  box-shadow: 0 2px 10px -4px #000;
 }
+
 
 .card.hearts, .card.diamonds {
   color:red;
 }
+.card.clubs, .card.spades {
+  color: black;
+}
 .card.hearts, .card.diamonds, .card.clubs, .card.spades {
   z-index: 5;
-
 }
-
 .card.blank {
   background: url(card-back.svg) center/cover , #c97272;
 }
-
 .card.draw {
   transition-duration: 400ms;
 }
-
 .card:not(.blank)::after {
   content: "";
   position: absolute;
