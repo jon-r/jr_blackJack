@@ -27,9 +27,9 @@ window.addEventListener("ready", (function (doc) {
      * @param {string} board - query selector to set as the visual game ui.
      */
     constructor(board) {
-      let query = board || '[data-blackjack]';
+      const TBL_QUERY = board || '[data-blackjack]';
 
-      this.table = doc.querySelector(query);
+      this.table = doc.querySelector(TBL_QUERY);
       this.current;
       this.options;
       this.players;
@@ -82,7 +82,10 @@ window.addEventListener("ready", (function (doc) {
     dealAll() {
       let dealer = this.ui.playerOutputs[0];
 
+
+
       this.ui.deal(this.current);
+
 
 
       ['ctrl-double','ctrl-hit','ctrl-forfeit','ctrl-stand']
@@ -109,12 +112,18 @@ window.addEventListener("ready", (function (doc) {
       this.ui.getButton('ctrl-bid').disabled = true;
 
       if (!this.ui.checkBids()) {
-        let playerCount = this.players.length;
+//        let playerCount = this.players.length;
 
-        for (let i = 1; i < playerCount; i++) { //skipping dealer
-          let player = this.players[i];
-          if (!player.skip) player.bid = this.ui.getBid(i);
-        }
+        //skipping dealer and empty players
+        this.players.slice(1).map((player, i) => {
+          if (!player.skip) player.bid = this.ui.getBid(i + 1);
+        });
+
+
+//        for (let i = 1; i < playerCount; i++) {
+//          let player = this.players[i];
+//          if (!player.skip) player.bid = this.ui.getBid(i);
+//        }
 
         this.dealAll();
       }
@@ -125,10 +134,12 @@ window.addEventListener("ready", (function (doc) {
      * Also enables the controls for the player's turn
      */
     firstDeal() {
+
+      ['ctrl-hit','ctrl-forfeit','ctrl-stand'].forEach(ctrl => this.ui.getButton(ctrl).disabled = false);
+
       let currPlayer = this.players[this.current];
-      this.ui.getButton('ctrl-double').disabled = !currPlayer.canDouble(); //canDouble;
-      ['ctrl-hit','ctrl-forfeit','ctrl-stand']
-        .forEach(ctrl => this.ui.getButton(ctrl).disabled = false);
+      this.ui.getButton('ctrl-double').disabled = !currPlayer.canDouble();
+
     }
 
     /**
@@ -141,9 +152,7 @@ window.addEventListener("ready", (function (doc) {
         target = this.current,
         result = this.players[target].draw(card);
 
-      if (result.endTurn && target > 0) {
-        this.playerStand();
-      }
+      if (result.endTurn && target > 0) this.playerStand();
 
       this.ui.hit(target, card, result.scoreStr);
 
@@ -153,6 +162,7 @@ window.addEventListener("ready", (function (doc) {
      * Moves clockwise to the next player on the table. When the round reachs the dealer he plays automatically.
      */
     playerStand() {
+      console.log('player stands');
       this.nextPlayer();
 
       if (this.current == 0) {
@@ -205,10 +215,10 @@ window.addEventListener("ready", (function (doc) {
       this.current = (current + 1) % (players.length);
 
       if (players[this.current].skip || players[this.current].score > 20) {
-        this.nextPlayer();
-      } else {
-        this.ui.setActive(this.current);
+        return this.nextPlayer();
       }
+
+      this.ui.setActive(this.current);
     }
 
     /**
@@ -232,12 +242,12 @@ window.addEventListener("ready", (function (doc) {
      * Players with 0 money are knocked out
      */
     endRound() {
-      let dealer = this.players[0],
-        playerCount = this.players.length;
+      let dealer = this.players.shift();
 
-      for (let i = 1; i < playerCount; i++) { //skipping dealer
-        let player = this.players[i],
-          money = player.getMoney(dealer.score, dealer.cardCount);
+      this.players.map((player, i) => {
+        let money = player.getMoney(dealer.score, dealer.cardCount);
+
+        i++; //since skipping dealer need to fix the index
 
         this.ui.setMoney(i, money);
 
@@ -246,7 +256,20 @@ window.addEventListener("ready", (function (doc) {
           this.ui.knockout(i);
           this.activeCount--;
         }
-      }
+      });
+
+//      for (let i = 1; i < playerCount; i++) { //skipping dealer
+//        let player = this.players[i],
+//          money = player.getMoney(dealer.score, dealer.cardCount);
+//
+//        this.ui.setMoney(i, money);
+//
+//        if (player.money == 0 && !player.skip) {
+//          player.skip = true;
+//          this.ui.knockout(i);
+//          this.activeCount--;
+//        }
+//      }
 
       setTimeout(() => {
         if (this.activeCount == 1) {
@@ -345,8 +368,8 @@ window.addEventListener("ready", (function (doc) {
 
       form.addEventListener('submit', (e) => {
         e.preventDefault();
-        this.setupGame(e.target.elements);
-        form.classList.add('inactive');
+
+        this.setupGame();
       });
 
       this.form = form;
@@ -363,18 +386,13 @@ window.addEventListener("ready", (function (doc) {
      * parses the options input, and starts the game.
      * @param {Array} inputs - html form inputs
      */
-    setupGame(inputs) {
-      let opts = {
-        deckCount :  inputs[0].value,
-        players : [],
-      };
+    setupGame() {
+      let inputs = getFormData(this.form).map(input => input.value);
 
-      for (let i = 1, n = inputs.length - 1; i < n; i++) {
-        let val = inputs[i].value;
-        if (val !== "") opts.players.push(val);
-      }
-
-      this.optsFn(opts);
+      this.optsFn({
+        deckCount : inputs.shift(),
+        players : inputs.filter(value => value !== "")
+      });
     }
   }
 
@@ -473,35 +491,34 @@ window.addEventListener("ready", (function (doc) {
       this.hand.push(newCard);
       this.score += newCard.score;
 
-      let scoreStr = '0',
-        endTurn = false,
+      let endTurn = false,
         firstScore = this.cardCount < 3,
         softAce = this.hand.some(card => card.face == 'A'),
         thisScore = this.score;
 
-      if (firstScore && thisScore == 21) {
-        scoreStr = `BlackJack ${thisScore}`;
 
-      } else if (softAce && thisScore < 21) {
-        scoreStr = `Soft ${thisScore}`;
-        this.hardAce = false;
-
-      } else if (thisScore == 21) {
-        scoreStr = thisScore;
-
-      } else if (thisScore > 21 && !this.hardAce) {
-        scoreStr = this.score = thisScore - 10;
-        this.hardAce = true;
-
-      } else if (thisScore > 21) {
-        scoreStr = `Bust ${thisScore}`;
-        endTurn = true;
-
-      } else {
-        scoreStr = thisScore;
+      if (thisScore > 21 && this.hardAce) {
+        return {
+          scoreStr: `Bust ${thisScore}`,
+          endTurn: true
+        };
       }
 
-      return {scoreStr,endTurn};
+      if (thisScore > 21 && softAce) {
+        this.hardAce = true;
+        thisScore = this.score = thisScore - 10;
+      }
+
+      if (firstScore && thisScore == 21) {
+        thisScore = `BlackJack ${thisScore}`;
+      }
+
+      if (softAce && thisScore < 21) {
+        this.hardAce = false;
+        thisScore = `Soft ${thisScore}`;
+      }
+
+      return {scoreStr: thisScore, endTurn};
     }
 
     /**
@@ -750,15 +767,8 @@ window.addEventListener("ready", (function (doc) {
      * @returns {boolean} validity check
      */
     checkBids() {
-      let out = 0,
-        players = this.playerOutputs,
-        count = players.length;
-
-      for (let i = 1; i < count; i++) {
-        let plyr = players[i];
-        if (!plyr.skip && this.checkBid(plyr.childMap.get('bid'))) out++;
-      }
-      return out > 0;
+      return this.playerOutputs.slice(1)
+        .some(player => !player.skip && this.checkBid( player.childMap.get('bid') ));
     }
 
     /**
@@ -857,9 +867,31 @@ window.addEventListener("ready", (function (doc) {
 
   /* - misc functions ---------------------------------------------------- */
 
+
+  //nodelist to array
+  function nodesArray(nodelist) {
+    //to make sure the list isnt empty;
+    if (!nodelist) return null;
+
+    return Array.prototype.slice.call(nodelist);
+  }
+
+  /**
+   * parses a webform and returns entries as an array
+   * @param {object} form - the formitself
+   * returns {array} key/value pairs
+   */
+  function getFormData(form) {
+    let formInputs = form.getElementsByTagName('input');
+
+    return nodesArray(formInputs)
+      .filter(input => input.name != 'submit')
+      .map(input => ({name: input.name, value: input.value}));
+  }
+
   /**
    * adds a natural variance to the dealt hands
-   * @param {number} scale = The scale of the jiggling
+   * @param {number} scale - The scale of the jiggling
    * @returns {string} the transform property value;
    */
   function transformJiggle(scale) {
