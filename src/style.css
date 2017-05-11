@@ -1,0 +1,193 @@
+/*! minireset.css v0.0.2 | MIT License | github.com/jgthms/minireset.css */html,body,p,ol,ul,li,dl,dt,dd,blockquote,figure,fieldset,legend,textarea,pre,iframe,hr,h1,h2,h3,h4,h5,h6{margin:0;padding:0}h1,h2,h3,h4,h5,h6{font-size:100%;font-weight:normal}ul{list-style:none}button,input,select,textarea{margin:0}html{box-sizing:border-box}*,*:before,*:after{box-sizing:inherit}img{height:auto;max-width:100%}
+
+/* -- type ------------------------------------------------------------------ */
+
+html {
+  font: 16px georgia, serif;
+  color: #dec549;
+}
+
+/* -- table ----------------------------------------------------------------- */
+
+.table {
+  background: url(assets/table.min.svg) center/contain no-repeat;
+  padding: 20px;
+  border: solid 1px fuchsia;
+  width: 1075px;
+  height: 700px;
+  margin: 0 auto;
+  position: relative;
+}
+
+/* -- options menu ---------------------------------------------------------- */
+
+.intro-form {
+  background-color: grey;
+  padding: 10px;
+}
+
+.intro-form.inactive {
+  opacity:0;
+}
+
+
+/* -- control menu ---------------------------------------------------------- */
+
+.control-box {
+  position: absolute;
+  top: 100%;
+}
+
+/* -- players --------------------------------------------------------------- */
+
+.player-frame {
+  position: absolute;
+}
+
+.player-0.player-frame {
+  top: 8%;
+  left: 48%;
+}
+.player-1.player-frame {
+  top: 37%;
+  left: 10%;
+}
+.player-2.player-frame {
+  top: 57%;
+  left: 27%;
+}
+.player-3.player-frame {
+  top: 64%;
+  left: 48%;
+}
+.player-4.player-frame {
+  top: 57%;
+  left: 69%;
+}
+.player-5.player-frame {
+  top: 37%;
+  left: 86%;
+}
+
+.title {
+  font-size: 1.3rem;
+}
+
+.title.active {
+  color: white;
+}
+
+.title.active::before {
+  content: '➤';
+  position: absolute;
+  left: -1.1em;
+  animation: enter 0.5s ease-out 0.5s backwards;
+}
+
+@keyframes enter {
+  from { opacity: 0; transform: translateX(-100%)}
+}
+
+
+.money {
+  font-size: 1.1rem;
+}
+.money::before {
+  content: '£';
+}
+
+.difference {
+  opacity: 0;
+}
+
+.difference.show-pos,
+.difference.show-neg {
+  opacity: 1;
+  animation: fade 2s ease-out 2s forwards;
+}
+
+@keyframes fade {
+  to { opacity: 0 }
+}
+
+.show-pos {
+  color: green;
+}
+.show-neg {
+  color: red;
+}
+.show-pos::before {
+  content:"+";
+}
+
+.score {
+  position: absolute;
+  text-align: right;
+  right: calc(100% + 10px);
+  top: 70px;
+  color: white;
+}
+
+.playerBet.invalid {
+  color: red;
+}
+
+
+
+
+
+/* -- cards ----------------------------------------------------------------- */
+
+.card {
+  display: inline-block;
+  width: 50px;
+  height: 70px;
+  background: white;
+  margin-right: -20px;
+  border-radius: 3px;
+  padding: 2px;
+  overflow: hidden;
+  font-weight: bold;
+  position: relative;
+  transition: transform 150ms ease;
+  box-shadow: 0 2px 10px -4px #000;
+}
+
+
+.card.hearts, .card.diamonds {
+  color:red;
+}
+.card.clubs, .card.spades {
+  color: black;
+}
+.card.hearts, .card.diamonds, .card.clubs, .card.spades {
+  z-index: 5;
+}
+.card.blank {
+  background: url(assets/card-back.svg) center/cover , #c97272;
+}
+.card.draw {
+  transition-duration: 400ms;
+}
+.card:not(.blank)::after {
+  content: "";
+  position: absolute;
+  right: -10px;
+  bottom:-5px;
+  height: 50px;
+  width: 50px;
+  background: url(assets/card.min.svg) 0/200%;
+}
+
+.card.hearts::after {
+  background-position: top left;
+}
+.card.diamonds::after {
+  background-position: bottom left;
+}
+.card.clubs::after {
+  background-position: top right;
+}
+.card.spades::after {
+  background-position: bottom right;
+}

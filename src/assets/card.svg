@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <path id="clubs" d="m74,33 a10,10 0 1,0 10,-12 a10,10 0 1,0 -18,0 a10,10 0 1,0 10,12 m-1,4 l5,8 h-10 z"/>
+  <path id="diamonds" fill="red" d="m25,54 l18,21 l-18,21 l-18,-21 z"/>
+  <path id="spades" d="m72,79 a1,1 0 0,0 20,0 q0,-7 -9,-14 t-8,-14 q0,7 -9,14 t-8,14 a1,1 0 0,0 20,0 m-3,8 l5,8 h-10 z"/>
+  <path id="hearts" fill="red" d="M28 18a1 1 0 0 0-20 0q0 7 9 14t8 14q0-7 9-14t8-14a1 1 0 0 0-20 0z"/>
+</svg>
