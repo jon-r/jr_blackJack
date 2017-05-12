@@ -1,4 +1,4 @@
-import { newEl, setAttributes } from './utils';
+import { setAttributes, delay, transformJiggle, CustomEl } from './utils';
 
 /** class UI represents the in game user interface and visuals */
 export default class UI {
@@ -21,21 +21,21 @@ export default class UI {
    * @returns {object} panel - the game controls html element
    */
   buildPanel() {
-    const panel = newEl('div', [['class', 'control-box']]);
+    const panel = new CustomEl('div', { class: 'control-box' });
 
     ['bid', 'hit', 'stand', 'double', 'forfeit', 'menu']
     .forEach((name) => {
-      const newCtrl = newEl('button', [
-        ['class', `ctrl ctrl-${name}`],
-        ['text', name],
-        ['data-ctrl', name],
-      ]);
-      panel.appendChild(newCtrl);
+      const newCtrl = new CustomEl('button', {
+        class: `ctrl ctrl-${name}`,
+        text: name,
+        'data-ctrl': name,
+      });
+      panel.el.appendChild(newCtrl.el);
     });
 
-    this.table.appendChild(panel);
+    this.table.appendChild(panel.el);
 
-    return panel;
+    return panel.el;
   }
 
   /**
@@ -54,9 +54,8 @@ export default class UI {
    * @returns {object} player    - in game player html element
    */
   buildPlayer(playerObj, idx) {
-    const parentEl = newEl('div', [
-      ['class', `player-frame player-${idx}`],
-    ]);
+    const isDealer = idx === 0;
+    const parentEl = new CustomEl('div', {class: `player-frame player-${idx}`});
     const output = {
       bid: 500,
       totalCards: 0,
@@ -66,13 +65,29 @@ export default class UI {
       goY: 0,
       skip: false,
     };
-    const vals = new Map([
-      ['title', ['h3', playerObj.name, true]],
-      ['money', ['h5', playerObj.money]],
-      ['difference', ['span', '0']],
-      ['hand', ['div', '', true]],
-      ['score', ['span', '0', true]],
-    ]);
+//    const vals = new Map([
+//      ['title', ['h3', playerObj.name, true]],
+//      ['money', ['h5', playerObj.money]],
+//      ['difference', ['span', '0']],
+//      ['hand', ['div', '', true]],
+//      ['score', ['span', '0', true]],
+//    ]);
+    const els = {
+      title: ['h3', playerObj.name, true],
+      money: ['h5', playerObj.money],
+      difference: ['span', '0'],
+      hand: ['div', '', true],
+      score: ['span', '0', true],
+    };
+
+    Object.keys(els).forEach((el) => {
+      const tag = arr[0];
+      const text = arr[1];
+      const skipDealer = arr[2]
+      if (isDealer && skipDealer) return;
+
+      const thisEl =
+    })
 
     vals.forEach(([key, arr]) => {
       if (idx > 0 || arr[2]) {
@@ -232,18 +247,18 @@ export default class UI {
    * @param {number} current - target player
    */
   deal(current) {
-    let active = this.playerOutputs[current],
-      x = active.goX - (active.revealedCards * 20),
-      y = active.goY,
-      newCard = newEl('div', [
-        ['class', 'card draw blank'],
-        ['style', {transform:`translate(${x}px, ${y}px)`}]
-      ]);
+    const active = this.playerOutputs[current];
+    const x = active.goX - (active.revealedCards * 20);
+    const y = active.goY;
+    const newCard = newEl('div', [
+      ['class', 'card draw blank'],
+      ['style', { transform: `translate(${x}px, ${y}px)` }],
+    ]);
 
-    active.totalCards++;
+    active.totalCards += 1;
     active.childMap.get('hand').appendChild(newCard);
-    window.getComputedStyle(newCard).transform;
-    newCard.style.transform = '';
+//    window.getComputedStyle(newCard).transform;
+    setTimeout(() => newCard.style.transform = '', 50);
   }
 
   /**
@@ -253,20 +268,19 @@ export default class UI {
    * @param {string} scoreStr players new score display
    */
   hit(current, card, scoreStr) {
-    let active = this.playerOutputs[current],
-      nth = active.revealedCards;
+    const active = this.playerOutputs[current];
+    const nth = active.revealedCards;
 
     active.childMap.get('score').textContent = scoreStr;
 
     if (nth < active.totalCards) {
-      active.revealedCards++;
+      active.revealedCards += 1;
 
-      this.reveal(current,nth,card);
+      this.reveal(current, nth, card);
     } else {
       delay(() => this.deal(current), 0)
-      .delay(() => this.hit(current,card,scoreStr), 200);
+      .delay(() => this.hit(current, card, scoreStr), 200);
     }
-
   }
 
   /**
@@ -275,14 +289,14 @@ export default class UI {
    * @param {number} nth     - index of card to be revealed
    * @param {object} card    - what the card turns out to be
    */
-  reveal(current,nth,card) {
-    let active = this.playerOutputs[current],
-      flipped = active.childMap.get('hand').getElementsByClassName('card')[nth];
+  reveal(current, nth, card) {
+    const active = this.playerOutputs[current];
+    const flipped = active.childMap.get('hand').getElementsByClassName('card')[nth];
 
     flipped.className = 'card blank';
 
     delay(() => flipped.style.transform = 'translateY(-80px) rotateX(-90deg)', 0)
-    .delay(() => this.setCard(flipped,card),150)
+    .delay(() => this.setCard(flipped, card), 150)
     .delay(() => flipped.style.transform = transformJiggle(10), 150);
   }
 
@@ -291,7 +305,7 @@ export default class UI {
    * @param {object} flipped - card html element
    * @param {object} cardObj - dealt card object
    */
-  setCard(flipped,cardObj) {
+  setCard(flipped, cardObj) {
     flipped.className = `card ${cardObj.suit}`;
     flipped.appendChild(newEl('span', [['text', cardObj.face]]));
   }

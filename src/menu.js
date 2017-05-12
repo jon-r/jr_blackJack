@@ -1,4 +1,4 @@
-import { newEl, getFormData } from './utils';
+import { getFormData, CustomEl } from './utils';
 
 /** Class Menu represents the pre-game options menu */
 export default class Menu {
@@ -8,54 +8,65 @@ export default class Menu {
    * @param {function} optsFn - game function to update the settings and start a new game
    */
   constructor(table, optsFn) {
-    this.build(table);
+    this.table = table;
+    this.form = this.buildForm();
     this.optsFn = optsFn;
   }
 
   /**
    * Creates the user options input.
-   * @param {object} table - table element
    */
-  build(table) {
-    const form = table.parentElement
-     .insertBefore(newEl('form', [['class', 'intro-form']]), table);
-    const rows = new Map([
-      ['decks', ['Deck Count', 'number', 6]],
-      ['p-1', ['Player 1', 'text', 'Aaron']],
-      ['p-2', ['Player 2', 'text', 'Beth']],
-      ['p-3', ['Player 3', 'text', 'Chris']],
-      ['p-4', ['Player 4', 'text', 'Denise']],
-      ['p-5', ['Player 5', 'text', 'Ethan']],
-      ['submit', ['New Game', 'submit', 'Go']],
-    ]);
+  buildFrom() {
+    const formObj = new CustomEl('form', { class: 'intro-form' });
+    const form = formObj.el;
 
-    rows.forEach(([name, arr]) => {
-      const newLabel = newEl('label', [
-        ['class', `form-label label-${name} label-${arr[1]}`],
-        ['for', `input-${name}`],
-        ['text', arr[0]],
-      ]);
-      const newInput = newEl('input', [
-        ['class', `form-input input-${name} input-${arr[1]}`],
-        ['name', name],
-        ['type', arr[1]],
-        ['placeholder', arr[0]],
-        ['id', `input-${name}`],
-        ['value', arr[2] || ''],
-        ['min', arr[1] === 'number' ? 1 : ''],
-      ]);
-      [newLabel, newInput].forEach(el => form.appendChild(el));
-      if (arr[1] === 'text') {
-        const btn = newEl('button', [
-          ['class', 'clear-player'],
-          ['text', 'X'],
-        ]);
-        btn.addEventListener('click', (e) => {
+    const inputs = {
+      decks: ['Deck Count', 'number', 6],
+      player1: ['Player 1', 'text', 'Aaron'],
+      player2: ['Player 2', 'text', 'Beth'],
+      player3: ['Player 3', 'text', 'Chris'],
+      player4: ['Player 4', 'text', 'Denise'],
+      player5: ['Player 5', 'text', 'Ethan'],
+      submit: ['New Game', 'submit', 'Go'],
+    };
+
+    Object.keys(inputs).forEach((input) => {
+      const name = input;
+      const placeholder = inputs[input][0];
+      const type = inputs[input][1];
+      const text = inputs[input][2];
+
+      const labelObj = new CustomEl('label', {
+        class: `form-label label-${name} label-${type}`,
+        for: `input-${name}`,
+        text: name,
+      });
+
+      const inputObj = new CustomEl('input', {
+        class: `form-input input-${name} input-${type}`,
+        name,
+        type,
+        placeholder,
+        id: `input-${name}`,
+        value: text || '',
+        min: type === 'number' ? 1 : '',
+      });
+
+      let btnObj = null;
+
+      if (type === 'text') {
+        btnObj = new CustomEl('button', {
+          class: 'clear-player',
+          text: 'X',
+        });
+
+        btnObj.el.addEventListener('click', (e) => {
           e.preventDefault();
           e.target.nextElementSibling.value = '';
         });
-        form.insertBefore(btn, newInput);
       }
+
+      [labelObj, inputObj, btnObj].forEach(newItem => form.appendChild(newItem.el));
     });
 
     form.addEventListener('submit', (e) => {
@@ -64,7 +75,9 @@ export default class Menu {
       this.setupGame();
     });
 
-    this.form = form;
+    this.table.parentElement.insertBefore(form);
+
+    return form;
   }
 
   /**

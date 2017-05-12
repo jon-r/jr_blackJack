@@ -18,6 +18,7 @@ export default class Deck {
     let i = 0;
     let j = 0;
     let k = 1;
+
     while (i < this.count) {
       while (j < 4) {
         while (k < 14) {

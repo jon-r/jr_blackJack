@@ -3,7 +3,7 @@
 
   // nodelist to array
   export function nodesArray(nodelist) {
-    //to make sure the list isnt empty;
+    // to make sure the list isnt empty;
     if (!nodelist) return null;
 
     return Array.prototype.slice.call(nodelist);
@@ -15,12 +15,78 @@
    * returns {array} key/value pairs
    */
   export function getFormData(form) {
-    let formInputs = form.getElementsByTagName('input');
+    const formInputs = form.getElementsByTagName('input');
 
     return nodesArray(formInputs)
-      .filter(input => input.name != 'submit')
-      .map(input => ({name: input.name, value: input.value}));
+      .filter(input => input.name !== 'submit')
+      .map(input => ({ name: input.name, value: input.value }));
   }
+
+  /**
+   * sets attributes of an object
+   * http://stackoverflow.com/a/12274886
+   * @param   {object} el    - element node
+   * @param   {object}  attrs - element attributes
+   * @returns {object} updates element
+   */
+
+  export class CustomEl {
+    constructor(tag, attrs = false) {
+      this.el = document.createElement(tag);
+
+      if (attrs) {
+        this.el.setAttributes(attrs);
+      }
+    }
+
+    setAttributes(attrs) {
+      Object.keys(attrs).forEach((attr) => {
+        const val = attrs[attr];
+
+        if ((attr === 'style') && (typeof val === 'object')) {
+          this.el.style = val;
+        } else if (attr === 'text') {
+          this.el.textContent = val;
+        } else {
+          this.el.setAttribute(attr, val);
+        }
+      });
+    }
+  }
+
+  export function setAttributes(el, attrs) {
+    Object.keys(attrs).forEach((attr) => {
+      const val = attrs[attr];
+
+      if ((attr === 'style') && (typeof val === 'object')) {
+        el.style = val;
+      }
+      else if (attr === 'text') {
+        el.textContent = val;
+      }
+      else {
+        el.setAttribute(attr, val);
+      }
+    });
+  }
+
+
+//    const attrMap = new Map(attrs);
+//
+//    for (let [attr, val] of attrMap) {
+//      if ((attr === 'styles' || attr === 'style') && typeof val === 'object') {
+//        for (let prop in val) {
+//          el.style[prop] = val[prop];
+//        }
+//      } else if (attr === 'text') {
+//        el.textContent = val;
+//      } else {
+//        el.setAttribute(attr, val);
+//      }
+//    }
+//
+//    return el;
+//  }
 
   /**
    * adds a natural variance to the dealt hands
@@ -28,11 +94,7 @@
    * @returns {string} the transform property value;
    */
   export function transformJiggle(scale) {
-    let nudgeX,
-      nudgeY,
-      rotate;
-
-    [nudgeX,nudgeY,rotate] = [0,0,0].map(() => (Math.random() - 0.5) * scale);
+    const [nudgeX, nudgeY, rotate] = [0, 0, 0].map(() => (Math.random() - 0.5) * scale);
 
     return `translate(${nudgeX}px,${nudgeY}px) rotate(${rotate}deg)`;
   }
@@ -43,36 +105,11 @@
    * @param   {Array}  attrs - element attributes
    * @returns {object} new element in the DOM
    */
-  export function newEl(el,attrs) {
-    let element = doc.createElement(el);
-
-    return setAttributes(element,attrs);
-  }
-
-  /**
-   * sets attributes of an object
-   * http://stackoverflow.com/a/12274886
-   * @param   {object} el    - element node
-   * @param   {Array}  attrs - element attributes
-   * @returns {object} updates element
-   */
-  export function setAttributes(el,attrs) {
-    let attrMap = new Map(attrs);
-
-    for (let [attr,val] of attrMap) {
-      if ((attr === 'styles' || attr === 'style') && typeof val === 'object') {
-        for (let prop in val) {
-          el.style[prop] = val[prop];
-        }
-      } else if (attr === 'text') {
-        el.textContent = val;
-      } else {
-        el.setAttribute(attr, val);
-      }
-    }
-
-    return el;
-  }
+//  export function newEl(el, attrs) {
+//    const element = document.createElement(el);
+//
+//    return setAttributes(element, attrs);
+//  }
 
   /**
    * chains functions to run in sequence, with preset delay
@@ -87,7 +124,7 @@
       self, timer;
 
     function schedule(fn, t) {
-      timer = setTimeout(function () {
+      timer = setTimeout(() => {
         timer = null;
         fn();
         if (queue.length) {

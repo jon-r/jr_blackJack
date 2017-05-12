@@ -107,9 +107,12 @@ window.addEventListener('ready', (function playBlackJack(doc) {
       if (!this.ui.checkBids()) {
 //        let playerCount = this.players.length;
 
-        // skipping dealer and empty players
-        this.players.slice(1).forEach((player, i) => {
-          if (!player.skip) player.bid = this.ui.getBid(i + 1);
+
+        this.players.forEach((player, i) => {
+          // skipping dealer and empty players
+          if (player.skip || i === 0) return;
+
+          player.bid = this.ui.getBid(i + 1);
         });
 
 
